@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { PracticeDay } from "./practice-data";
 
-type Payload = { data: PracticeDay[]; totalHours: number; live: boolean; checkedAt: string | null };
+type Payload = { data: PracticeDay[]; totalHours: number; practiceDays: number; averageHours: number; daysOff: number; live: boolean; checkedAt: string | null };
 const DAY = 86_400_000;
 
 function iso(date: Date) { return date.toISOString().slice(0, 10); }
@@ -12,7 +12,7 @@ function level(minutes: number) { return minutes === 0 ? 0 : minutes < 60 ? 1 : 
 function duration(minutes: number) { const h = Math.floor(minutes / 60); const m = minutes % 60; return h ? `${h}h${m ? ` ${m}m` : ""}` : `${m}m`; }
 
 export default function ActivityDashboard({ initial }: { initial: PracticeDay[] }) {
-  const [payload, setPayload] = useState<Payload>({ data: initial, totalHours: 568.57, live: false, checkedAt: null });
+  const [payload, setPayload] = useState<Payload>({ data: initial, totalHours: 568.57, practiceDays: 343, averageHours: 1.66, daysOff: 61, live: false, checkedAt: null });
   const [selected, setSelected] = useState<PracticeDay | null>(null);
 
   useEffect(() => {
@@ -62,7 +62,9 @@ export default function ActivityDashboard({ initial }: { initial: PracticeDay[] 
       </section>
       <section className="stats" aria-label="Practice summary">
         <article><span>Total practice</span><strong>{payload.totalHours.toFixed(2)}<small> hours</small></strong></article>
-        <article><span>Practice days</span><strong>{view.practiced}<small> days</small></strong></article>
+        <article><span>Practice days</span><strong>{payload.practiceDays}<small> days</small></strong></article>
+        <article><span>Daily average</span><strong>{payload.averageHours.toFixed(2)}<small> hours</small></strong></article>
+        <article><span>Days off</span><strong>{payload.daysOff}<small> days</small></strong></article>
         <article><span>Latest streak</span><strong>{view.streak}<small> days</small></strong></article>
         <article><span>Longest day</span><strong>{view.best ? duration(view.best.minutes) : "—"}</strong><small>{view.best ? localDate(view.best.date).toLocaleDateString("en-US", { month:"short", day:"numeric" }) : ""}</small></article>
       </section>

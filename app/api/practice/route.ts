@@ -1,4 +1,4 @@
-import { snapshot, snapshotTotalHours } from "../../practice-data";
+import { snapshot, snapshotAverageHours, snapshotDaysOff, snapshotPracticeDays, snapshotTotalHours } from "../../practice-data";
 
 const FEED = "https://docs.google.com/spreadsheets/d/1oR05zGWqdEKNy1smZL2tV0WTp2uSknmo9p5riec1y7g/gviz/tq?tqx=out:json&gid=0";
 type SheetRow = { c: Array<{ v?: unknown; f?: string } | null> };
@@ -38,9 +38,13 @@ export async function GET() {
     const maximumDay = Math.max(...totals.keys());
     const start = Date.UTC(2025, 8, 7);
     const data = Array.from({ length: maximumDay }, (_, index) => ({ date: new Date(start + index * 86_400_000).toISOString().slice(0, 10), minutes: totals.get(index + 1) || 0 }));
-    const summaryHours = Number(pages[0].find(row => typeof row.c?.[6]?.v === "number")?.c?.[6]?.v);
-    return Response.json({ data, totalHours: Number.isFinite(summaryHours) ? summaryHours : snapshotTotalHours, live: true, checkedAt: new Date().toISOString() });
+    const summaryRows = pages[0].slice(0, 6);
+    const summaryHours = Number(summaryRows.find(row => typeof row.c?.[6]?.v === "number")?.c?.[6]?.v);
+    const practiceDays = Number(summaryRows.find(row => Number(row.c?.[4]?.v) >= 100)?.c?.[4]?.v);
+    const averageHours = Number(summaryRows.find(row => Number(row.c?.[5]?.v) > 0 && Number(row.c?.[5]?.v) < 10)?.c?.[5]?.v);
+    const daysOff = Number(summaryRows.find(row => Number(row.c?.[5]?.v) >= 10)?.c?.[5]?.v);
+    return Response.json({ data, totalHours: Number.isFinite(summaryHours) ? summaryHours : snapshotTotalHours, practiceDays: Number.isFinite(practiceDays) ? practiceDays : snapshotPracticeDays, averageHours: Number.isFinite(averageHours) ? averageHours : snapshotAverageHours, daysOff: Number.isFinite(daysOff) ? daysOff : snapshotDaysOff, live: true, checkedAt: new Date().toISOString() });
   } catch {
-    return Response.json({ data: snapshot, totalHours: snapshotTotalHours, live: false, checkedAt: new Date().toISOString() });
+    return Response.json({ data: snapshot, totalHours: snapshotTotalHours, practiceDays: snapshotPracticeDays, averageHours: snapshotAverageHours, daysOff: snapshotDaysOff, live: false, checkedAt: new Date().toISOString() });
   }
 }

@@ -17,3 +17,6 @@ export const snapshot: PracticeDay[] = [
 ].map(([date, minutes]) => ({ date: date as string, minutes: minutes as number }));
 
 export const snapshotTotalHours = 568.57;
+export const snapshotPracticeDays = 343;
+export const snapshotAverageHours = 1.66;
+export const snapshotDaysOff = 61;
