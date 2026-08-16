@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { PracticeDay } from "./practice-data";
 
-type Payload = { data: PracticeDay[]; live: boolean; checkedAt: string };
+type Payload = { data: PracticeDay[]; live: boolean; checkedAt: string | null };
 const DAY = 86_400_000;
 
 function iso(date: Date) { return date.toISOString().slice(0, 10); }
@@ -12,7 +12,7 @@ function level(minutes: number) { return minutes === 0 ? 0 : minutes < 60 ? 1 : 
 function duration(minutes: number) { const h = Math.floor(minutes / 60); const m = minutes % 60; return h ? `${h}h${m ? ` ${m}m` : ""}` : `${m}m`; }
 
 export default function ActivityDashboard({ initial }: { initial: PracticeDay[] }) {
-  const [payload, setPayload] = useState<Payload>({ data: initial, live: false, checkedAt: new Date().toISOString() });
+  const [payload, setPayload] = useState<Payload>({ data: initial, live: false, checkedAt: null });
   const [selected, setSelected] = useState<PracticeDay | null>(null);
 
   useEffect(() => {
@@ -82,7 +82,7 @@ export default function ActivityDashboard({ initial }: { initial: PracticeDay[] 
         </div>
         <div className="card-foot"><p>{selected ? <><b>{localDate(selected.date).toLocaleDateString("en-US", { month:"long", day:"numeric", year:"numeric" })}</b><span>{selected.minutes ? duration(selected.minutes) : "No practice recorded"}</span></> : <span>Select a day to see its total</span>}</p><div className="legend"><span>Less</span>{[0,1,2,3,4].map(n => <i key={n} className={`cell level-${n}`} />)}<span>More</span></div></div>
       </section>
-      <footer>Source checked {new Date(payload.checkedAt).toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit" })}</footer>
+      <footer>{payload.checkedAt ? `Source checked ${new Date(payload.checkedAt).toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit" })}` : "Checking source…"}</footer>
     </main>
   );
 }
