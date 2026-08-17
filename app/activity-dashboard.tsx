@@ -3,14 +3,37 @@
 import { useEffect, useMemo, useState } from "react";
 import type { PracticeDay } from "./practice-data";
 import { summarizePracticePeriod } from "./practice-metrics";
+import type { PracticePayload } from "./practice-sheet";
 
-type Payload = { data: PracticeDay[]; totalHours: number; live: boolean; checkedAt: string | null };
 const DAY = 86_400_000;
 
 function iso(date: Date) { return date.toISOString().slice(0, 10); }
 function localDate(value: string) { return new Date(`${value}T12:00:00`); }
 function level(minutes: number) { return minutes === 0 ? 0 : minutes < 60 ? 1 : minutes < 120 ? 2 : minutes < 180 ? 3 : 4; }
 function duration(minutes: number) { const rounded = Math.round(minutes); const h = Math.floor(rounded / 60); const m = rounded % 60; return h ? `${h}h${m ? ` ${m}m` : ""}` : `${m}m`; }
+
+function isPracticePayload(value: unknown): value is PracticePayload {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<PracticePayload>;
+  const validError = candidate.error === null || (
+    Boolean(candidate.error)
+    && typeof candidate.error?.code === "string"
+    && typeof candidate.error?.message === "string"
+  );
+  return Array.isArray(candidate.data)
+    && candidate.data.every(day => (
+      day
+      && typeof day.date === "string"
+      && Number.isFinite(day.minutes)
+      && (day.items === undefined || (Array.isArray(day.items) && day.items.every(item => typeof item === "string")))
+    ))
+    && Number.isFinite(candidate.totalHours)
+    && typeof candidate.live === "boolean"
+    && (candidate.checkedAt === null || typeof candidate.checkedAt === "string")
+    && validError
+    && Array.isArray(candidate.warnings)
+    && candidate.warnings.every(warning => typeof warning === "string");
+}
 
 function RangeChart({ values, format, labels }: { values: [number, number, number]; format: (value: number, index: number) => string; labels: [string, string, string] }) {
   return (
@@ -22,16 +45,38 @@ function RangeChart({ values, format, labels }: { values: [number, number, numbe
   );
 }
 
-export default function ActivityDashboard({ initial }: { initial: PracticeDay[] }) {
-  const [payload, setPayload] = useState<Payload>({ data: initial, totalHours: 562.85, live: false, checkedAt: null });
+export default function ActivityDashboard({ initial, initialTotalHours }: { initial: PracticeDay[]; initialTotalHours: number }) {
+  const [payload, setPayload] = useState<PracticePayload>({ data: initial, totalHours: initialTotalHours, live: false, checkedAt: null, error: null, warnings: [] });
   const [selected, setSelected] = useState<(PracticeDay & { occurred: boolean }) | null>(null);
   const [popover, setPopover] = useState<{ date: string; state: string; items: string[]; x: number; y: number } | null>(null);
 
   useEffect(() => {
-    const refresh = () => fetch("/api/practice", { cache: "no-store" }).then(r => r.json()).then(setPayload).catch(() => undefined);
-    refresh();
-    const timer = window.setInterval(refresh, 60_000);
-    return () => window.clearInterval(timer);
+    let controller: AbortController | null = null;
+    const refresh = async () => {
+      controller?.abort();
+      controller = new AbortController();
+      try {
+        const response = await fetch("/api/practice", { cache: "no-store", signal: controller.signal });
+        const next: unknown = await response.json();
+        if (!isPracticePayload(next) || (!response.ok && next.live)) throw new Error("Invalid practice response");
+        setPayload(current => next.live || !current.checkedAt
+          ? next
+          : { ...current, live: false, error: next.error });
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setPayload(current => ({
+          ...current,
+          live: false,
+          error: { code: "refresh_failed", message: "Live data refresh failed" },
+        }));
+      }
+    };
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 60_000);
+    return () => {
+      window.clearInterval(timer);
+      controller?.abort();
+    };
   }, []);
 
   const view = useMemo(() => {
@@ -55,7 +100,17 @@ export default function ActivityDashboard({ initial }: { initial: PracticeDay[] 
       if (name !== previous) { months.push({ label: name, column: Math.floor(index / 7) + 1 }); previous = name; }
     });
     return { cells, weeks, months, summary };
-  }, [payload]);
+  }, [payload.data]);
+
+  const syncLabel = payload.live
+    ? payload.warnings.length
+      ? `Live · ${payload.warnings.length} sheet ${payload.warnings.length === 1 ? "issue" : "issues"}`
+      : "Live · refreshes every minute"
+    : payload.error
+      ? `${payload.checkedAt ? "Last live data" : "Snapshot"} · ${payload.error.message}`
+      : "Checking live sheet…";
+  const snapshotDate = localDate(view.summary.days.filter(day => day.occurred).at(-1)?.date ?? view.summary.days[0].date)
+    .toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
   return (
     <main className="shell">
@@ -66,7 +121,7 @@ export default function ActivityDashboard({ initial }: { initial: PracticeDay[] 
       <section className="activity-card" id="activity">
         <div className="card-head">
           <div><h2>Daily practice</h2><p>Color intensity represents total minutes practiced.</p></div>
-          <div className="card-status"><span>{view.summary.days[0].date.slice(0,4)}—{view.summary.days[view.summary.days.length - 1].date.slice(0,4)}</span><div className={`sync ${payload.live ? "is-live" : ""}`}><i />{payload.live ? "Live · refreshes every minute" : "Snapshot · sheet access is restricted"}</div></div>
+          <div className="card-status"><span>{view.summary.days[0].date.slice(0,4)}—{view.summary.days[view.summary.days.length - 1].date.slice(0,4)}</span><div className={`sync ${payload.live ? "is-live" : ""}`} title={payload.error?.message ?? payload.warnings.join("\n")}><i />{syncLabel}</div></div>
         </div>
         <div className="chart-scroll">
           <div className="chart" style={{ "--weeks": view.weeks } as React.CSSProperties}>
@@ -101,7 +156,9 @@ export default function ActivityDashboard({ initial }: { initial: PracticeDay[] 
         <article className="range-card"><span>Daily practice range</span><RangeChart values={[view.summary.daily.minimum, view.summary.daily.average, view.summary.daily.maximum]} format={duration} labels={["Shortest", "Average", "Longest"]} /></article>
         <article className="range-card"><span>Practice streaks</span><RangeChart values={[view.summary.streaks.minimum, view.summary.streaks.average, view.summary.streaks.maximum]} format={value => `${Number.isInteger(value) ? value : value.toFixed(1)}d`} labels={["Shortest", "Average", "Longest"]} /></article>
       </section>
-      <footer>{payload.checkedAt ? `Source checked ${new Date(payload.checkedAt).toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit" })}` : "Checking source…"}</footer>
+      <footer>{payload.checkedAt
+        ? `${payload.live ? "Source checked" : "Last live update"} ${new Date(payload.checkedAt).toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit" })}`
+        : payload.error ? `Saved snapshot through ${snapshotDate}` : "Checking source…"}</footer>
     </main>
   );
 }
