@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Practice Activity",
+  title: "Practice Activity: Travis Huff",
   description: "A live contribution-style view of daily drum practice activity.",
   icons: {
     icon: "/favicon.svg",

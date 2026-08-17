@@ -51,7 +51,7 @@ export default function ActivityDashboard({ initial }: { initial: PracticeDay[] 
   return (
     <main className="shell">
       <header className="topbar">
-        <a className="brand" href="#activity" aria-label="Practice activity home"><span>PA</span> Practice Activity</a>
+        <a className="brand" href="#activity" aria-label="Practice activity home"><span>PA</span> Practice Activity: Travis Huff</a>
         <a className="sheet-link" href="https://docs.google.com/spreadsheets/d/1oR05zGWqdEKNy1smZL2tV0WTp2uSknmo9p5riec1y7g/edit" target="_blank" rel="noreferrer">Open source sheet ↗</a>
       </header>
       <section className="hero" id="activity">
@@ -59,11 +59,11 @@ export default function ActivityDashboard({ initial }: { initial: PracticeDay[] 
         <div className={`sync ${payload.live ? "is-live" : ""}`}><i />{payload.live ? "Live · refreshes every minute" : "Snapshot · sheet access is restricted"}</div>
       </section>
       <section className="stats" aria-label="Practice summary">
-        <article><span>Total practice</span><strong>{payload.totalHours.toFixed(2)}<small> hours</small></strong></article>
-        <article><span>Practice days</span><strong>{payload.practiceDays}<small> days</small></strong></article>
-        <article><span>Days off</span><strong>{payload.daysOff}<small> days</small></strong></article>
+        <article><span>Total practice time</span><strong>{payload.totalHours.toFixed(2)}<small> hours</small></strong></article>
         <article><span>Daily average</span><strong>{payload.averageHours.toFixed(2)}<small> hours</small></strong></article>
         <article><span>Latest streak</span><strong>{view.streak}<small> days</small></strong></article>
+        <article><span>Practice days</span><strong>{payload.practiceDays}<small> days</small></strong></article>
+        <article><span>Days off</span><strong>{payload.daysOff}<small> days</small></strong></article>
       </section>
       <section className="activity-card">
         <div className="card-head"><div><h2>Daily practice</h2><p>Color intensity represents total minutes practiced.</p></div><span>{payload.data[0]?.date.slice(0,4)}—{new Date().getFullYear()}</span></div>
