@@ -38,7 +38,6 @@ body {
   height: 84px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   border-bottom: 1px solid var(--line);
 }
 
@@ -60,16 +59,6 @@ body {
   background: var(--accent);
   color: #fff;
   font-size: 12px;
-}
-
-.sheet-link {
-  color: var(--muted);
-  font-size: 14px;
-  text-decoration: none;
-}
-
-.sheet-link:hover {
-  color: var(--accent);
 }
 
 .sync {
@@ -522,15 +511,6 @@ footer {
 
   .brand {
     font-size: 14px;
-  }
-
-  .sheet-link {
-    font-size: 0;
-  }
-
-  .sheet-link::after {
-    font-size: 13px;
-    content: "Sheet ↗";
   }
 
   .activity-card {

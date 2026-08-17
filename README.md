@@ -66,10 +66,8 @@ including the practiced-item text in column C, so do not include private data.
 ### 3. Connect and personalize the dashboard
 
 Copy the spreadsheet ID from its URL—the text between `/d/` and `/edit`—and
-replace the existing ID in both of these locations:
-
-- `BASE_FEED` in `app/api/practice/route.ts`
-- The **Open source sheet** link in `app/activity-dashboard.tsx`
+replace the existing ID in `BASE_FEED` inside
+`app/api/practice/route.ts`.
 
 The feed currently reads the first sheet tab (`gid=0`). Change that value in
 `BASE_FEED` if your data is on a different tab.
