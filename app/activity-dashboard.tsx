@@ -14,6 +14,7 @@ function duration(minutes: number) { const h = Math.floor(minutes / 60); const m
 export default function ActivityDashboard({ initial }: { initial: PracticeDay[] }) {
   const [payload, setPayload] = useState<Payload>({ data: initial, totalHours: 562.85, practiceDays: 343, averageHours: 1.66, daysOff: 61, live: false, checkedAt: null });
   const [selected, setSelected] = useState<PracticeDay | null>(null);
+  const [popover, setPopover] = useState<{ label: string; x: number; y: number } | null>(null);
 
   useEffect(() => {
     const refresh = () => fetch("/api/practice", { cache: "no-store" }).then(r => r.json()).then(setPayload).catch(() => undefined);
@@ -74,11 +75,13 @@ export default function ActivityDashboard({ initial }: { initial: PracticeDay[] 
             <div className="heatmap">
               {view.cells.map(cell => {
                 const label = `${localDate(cell.date).toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric", year:"numeric" })}: ${cell.minutes ? duration(cell.minutes) : "No practice"}`;
-                return <button key={cell.date} className={`cell level-${level(cell.minutes)} ${cell.inRange ? "" : "outside"}`} aria-label={label} title={label} onClick={() => setSelected({ date: cell.date, minutes: cell.minutes })} />;
+                const showPopover = (target: HTMLButtonElement) => { const rect = target.getBoundingClientRect(); setPopover({ label, x: rect.left + rect.width / 2, y: rect.top }); };
+                return <button key={cell.date} className={`cell level-${level(cell.minutes)} ${cell.inRange ? "" : "outside"}`} aria-label={label} onMouseEnter={event => showPopover(event.currentTarget)} onMouseLeave={() => setPopover(null)} onFocus={event => showPopover(event.currentTarget)} onBlur={() => setPopover(null)} onClick={() => setSelected({ date: cell.date, minutes: cell.minutes })} />;
               })}
             </div>
           </div>
         </div>
+        {popover && <div className="cell-popover" style={{ left: popover.x, top: popover.y }} role="tooltip">{popover.label}</div>}
         <div className="card-foot"><p>{selected ? <><b>{localDate(selected.date).toLocaleDateString("en-US", { month:"long", day:"numeric", year:"numeric" })}</b><span>{selected.minutes ? duration(selected.minutes) : "No practice recorded"}</span></> : <span>Select a day to see its total</span>}</p><div className="legend"><span>Less</span>{[0,1,2,3,4].map(n => <i key={n} className={`cell level-${n}`} />)}<span>More</span></div></div>
       </section>
       <footer>{payload.checkedAt ? `Source checked ${new Date(payload.checkedAt).toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit" })}` : "Checking source…"}</footer>
