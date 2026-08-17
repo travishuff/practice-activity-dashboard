@@ -87,8 +87,6 @@ export default function ActivityDashboard({ initial }: { initial: PracticeDay[] 
       </section>
       <section className="stats" aria-label="Practice summary">
         <article className="total-card"><span>Total practice time</span><strong>{payload.totalHours.toFixed(2)}<small> hours</small></strong></article>
-        <article className="range-card"><span>Daily practice range</span><RangeChart values={[view.summary.daily.minimum, view.summary.daily.average, view.summary.daily.maximum]} format={(value, index) => index === 1 ? `${(value / 60).toFixed(2)}h` : duration(value)} labels={["Shortest", "Average", "Longest"]} /></article>
-        <article className="range-card"><span>Practice streaks</span><RangeChart values={[view.summary.streaks.minimum, view.summary.streaks.average, view.summary.streaks.maximum]} format={value => `${Number.isInteger(value) ? value : value.toFixed(1)}d`} labels={["Shortest", "Average", "Longest"]} /></article>
         <article className="split-card">
           <span>365-day activity</span>
           <div className="split-values"><strong>{view.summary.practiceDays}<small> practiced</small></strong><strong>{view.summary.daysOff}<small> off</small></strong><strong>{view.summary.futureDays}<small> future</small></strong></div>
@@ -99,6 +97,8 @@ export default function ActivityDashboard({ initial }: { initial: PracticeDay[] 
           </div>
           <div className="split-legend"><small><i className="practiced" />Practice days</small><small><i className="off" />Days off</small><small><i className="future-segment" />Future</small><small>365 total</small></div>
         </article>
+        <article className="range-card"><span>Daily practice range</span><RangeChart values={[view.summary.daily.minimum, view.summary.daily.average, view.summary.daily.maximum]} format={(value, index) => index === 1 ? `${(value / 60).toFixed(2)}h` : duration(value)} labels={["Shortest", "Average", "Longest"]} /></article>
+        <article className="range-card"><span>Practice streaks</span><RangeChart values={[view.summary.streaks.minimum, view.summary.streaks.average, view.summary.streaks.maximum]} format={value => `${Number.isInteger(value) ? value : value.toFixed(1)}d`} labels={["Shortest", "Average", "Longest"]} /></article>
       </section>
       <footer>{payload.checkedAt ? `Source checked ${new Date(payload.checkedAt).toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit" })}` : "Checking source…"}</footer>
     </main>
