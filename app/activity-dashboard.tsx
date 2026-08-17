@@ -62,26 +62,11 @@ export default function ActivityDashboard({ initial }: { initial: PracticeDay[] 
         <a className="brand" href="#activity" aria-label="Practice activity home"><span>PA</span> Practice Activity: Travis Huff</a>
         <a className="sheet-link" href="https://docs.google.com/spreadsheets/d/1oR05zGWqdEKNy1smZL2tV0WTp2uSknmo9p5riec1y7g/edit" target="_blank" rel="noreferrer">Open source sheet ↗</a>
       </header>
-      <section className="hero" id="activity">
-        <div><p className="eyebrow">Rolling 365 days</p><h1>Activity</h1><p className="lede">A year of showing up, one practice at a time.</p></div>
-        <div className={`sync ${payload.live ? "is-live" : ""}`}><i />{payload.live ? "Live · refreshes every minute" : "Snapshot · sheet access is restricted"}</div>
-      </section>
-      <section className="stats" aria-label="Practice summary">
-        <article className="total-card"><span>Total practice time</span><strong>{payload.totalHours.toFixed(2)}<small> hours</small></strong></article>
-        <article className="range-card"><span>Daily practice range</span><RangeChart values={[view.summary.daily.minimum, view.summary.daily.average, view.summary.daily.maximum]} format={duration} labels={["Shortest", "Average", "Longest"]} /></article>
-        <article className="range-card"><span>Practice streaks</span><RangeChart values={[view.summary.streaks.minimum, view.summary.streaks.average, view.summary.streaks.maximum]} format={value => `${Number.isInteger(value) ? value : value.toFixed(1)}d`} labels={["Shortest", "Average", "Longest"]} /></article>
-        <article className="split-card">
-          <span>365-day activity</span>
-          <div className="split-values"><strong>{view.summary.practiceDays}<small> practiced</small></strong><strong>{view.summary.daysOff}<small> off</small></strong></div>
-          <div className="split-bar" role="img" aria-label={`${view.summary.practiceDays} practice days and ${view.summary.daysOff} days off, 365 days total`}>
-            <i className="practiced" style={{ width: `${view.summary.practiceDays / 365 * 100}%` }} />
-            <i className="off" style={{ width: `${view.summary.daysOff / 365 * 100}%` }} />
-          </div>
-          <div className="split-legend"><small><i className="practiced" />Practice days</small><small><i className="off" />Days off</small><small>365 total</small></div>
-        </article>
-      </section>
-      <section className="activity-card">
-        <div className="card-head"><div><h2>Daily practice</h2><p>Color intensity represents total minutes practiced.</p></div><span>{payload.data[0]?.date.slice(0,4)}—{new Date().getFullYear()}</span></div>
+      <section className="activity-card" id="activity">
+        <div className="card-head">
+          <div><h2>Daily practice</h2><p>Color intensity represents total minutes practiced.</p></div>
+          <div className="card-status"><span>{payload.data[0]?.date.slice(0,4)}—{new Date().getFullYear()}</span><div className={`sync ${payload.live ? "is-live" : ""}`}><i />{payload.live ? "Live · refreshes every minute" : "Snapshot · sheet access is restricted"}</div></div>
+        </div>
         <div className="chart-scroll">
           <div className="chart" style={{ "--weeks": view.weeks } as React.CSSProperties}>
             <div className="month-labels">{view.months.map((month, i) => <span key={`${month.label}-${i}`} style={{ gridColumn: month.column }}>{month.label}</span>)}</div>
@@ -97,6 +82,20 @@ export default function ActivityDashboard({ initial }: { initial: PracticeDay[] 
         </div>
         {popover && <div className="cell-popover" style={{ left: popover.x, top: popover.y }} role="tooltip">{popover.label}</div>}
         <div className="card-foot"><p>{selected ? <><b>{localDate(selected.date).toLocaleDateString("en-US", { month:"long", day:"numeric", year:"numeric" })}</b><span>{selected.minutes ? duration(selected.minutes) : "No practice recorded"}</span></> : <span>Select a day to see its total</span>}</p><div className="legend"><span>Less</span>{[0,1,2,3,4].map(n => <i key={n} className={`cell level-${n}`} />)}<span>More</span></div></div>
+      </section>
+      <section className="stats" aria-label="Practice summary">
+        <article className="total-card"><span>Total practice time</span><strong>{payload.totalHours.toFixed(2)}<small> hours</small></strong></article>
+        <article className="range-card"><span>Daily practice range</span><RangeChart values={[view.summary.daily.minimum, view.summary.daily.average, view.summary.daily.maximum]} format={duration} labels={["Shortest", "Average", "Longest"]} /></article>
+        <article className="range-card"><span>Practice streaks</span><RangeChart values={[view.summary.streaks.minimum, view.summary.streaks.average, view.summary.streaks.maximum]} format={value => `${Number.isInteger(value) ? value : value.toFixed(1)}d`} labels={["Shortest", "Average", "Longest"]} /></article>
+        <article className="split-card">
+          <span>365-day activity</span>
+          <div className="split-values"><strong>{view.summary.practiceDays}<small> practiced</small></strong><strong>{view.summary.daysOff}<small> off</small></strong></div>
+          <div className="split-bar" role="img" aria-label={`${view.summary.practiceDays} practice days and ${view.summary.daysOff} days off, 365 days total`}>
+            <i className="practiced" style={{ width: `${view.summary.practiceDays / 365 * 100}%` }} />
+            <i className="off" style={{ width: `${view.summary.daysOff / 365 * 100}%` }} />
+          </div>
+          <div className="split-legend"><small><i className="practiced" />Practice days</small><small><i className="off" />Days off</small><small>365 total</small></div>
+        </article>
       </section>
       <footer>{payload.checkedAt ? `Source checked ${new Date(payload.checkedAt).toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit" })}` : "Checking source…"}</footer>
     </main>
