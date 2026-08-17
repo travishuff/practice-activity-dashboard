@@ -12,7 +12,7 @@ function level(minutes: number) { return minutes === 0 ? 0 : minutes < 60 ? 1 : 
 function duration(minutes: number) { const h = Math.floor(minutes / 60); const m = minutes % 60; return h ? `${h}h${m ? ` ${m}m` : ""}` : `${m}m`; }
 
 export default function ActivityDashboard({ initial }: { initial: PracticeDay[] }) {
-  const [payload, setPayload] = useState<Payload>({ data: initial, totalHours: 568.57, practiceDays: 343, averageHours: 1.66, daysOff: 61, live: false, checkedAt: null });
+  const [payload, setPayload] = useState<Payload>({ data: initial, totalHours: 562.85, practiceDays: 343, averageHours: 1.66, daysOff: 61, live: false, checkedAt: null });
   const [selected, setSelected] = useState<PracticeDay | null>(null);
 
   useEffect(() => {
