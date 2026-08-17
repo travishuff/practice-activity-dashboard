@@ -145,13 +145,13 @@ export default function ActivityDashboard({ initial, initialTotalHours }: { init
         <article className="total-card"><span>Total practice time</span><strong>{duration(payload.totalHours * 60)}</strong></article>
         <article className="split-card">
           <span>365-day activity</span>
-          <div className="split-values"><strong>{view.summary.practiceDays}<small> practiced</small></strong><strong>{view.summary.daysOff}<small> off</small></strong><strong>{view.summary.futureDays}<small> future</small></strong></div>
-          <div className="split-bar" role="img" aria-label={`${view.summary.practiceDays} practice days, ${view.summary.daysOff} days off, and ${view.summary.futureDays} future days, 365 days total`}>
+          <div className="split-values"><strong>{view.summary.practiceDays}<small> practiced</small></strong><strong>{view.summary.daysOff}<small> off</small></strong><strong>{view.summary.futureDays}<small> remaining</small></strong></div>
+          <div className="split-bar" role="img" aria-label={`${view.summary.practiceDays} practice days, ${view.summary.daysOff} days off, and ${view.summary.futureDays} remaining days, 365 days total`}>
             <i className="practiced" style={{ width: `${view.summary.practiceDays / 365 * 100}%` }} />
             <i className="off" style={{ width: `${view.summary.daysOff / 365 * 100}%` }} />
             <i className="future-segment" style={{ width: `${view.summary.futureDays / 365 * 100}%` }} />
           </div>
-          <div className="split-legend"><small><i className="practiced" />Practice days</small><small><i className="off" />Days off</small><small><i className="future-segment" />Future</small><small>365 total</small></div>
+          <div className="split-legend"><small><i className="practiced" />Practice days</small><small><i className="off" />Days off</small><small><i className="future-segment" />Remaining</small><small>365 total</small></div>
         </article>
         <article className="range-card"><span>Daily practice range</span><RangeChart values={[view.summary.daily.minimum, view.summary.daily.average, view.summary.daily.maximum]} format={duration} labels={["Shortest", "Average", "Longest"]} /></article>
         <article className="range-card"><span>Practice streaks</span><RangeChart values={[view.summary.streaks.minimum, view.summary.streaks.average, view.summary.streaks.maximum]} format={value => `${Number.isInteger(value) ? value : value.toFixed(1)}d`} labels={["Shortest", "Average", "Longest"]} /></article>
