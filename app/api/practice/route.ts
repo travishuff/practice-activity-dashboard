@@ -10,6 +10,11 @@ function cellNumber(cell: SheetRow["c"][number]) {
   return Number.isFinite(value) ? value : null;
 }
 
+function cellText(cell: SheetRow["c"][number]) {
+  const raw = cell?.f ?? cell?.v;
+  return typeof raw === "string" && raw.trim() ? raw.trim() : null;
+}
+
 function parseRows(text: string) {
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
@@ -52,19 +57,24 @@ function parseDays(rows: SheetRow[]) {
   const anchor = datedHeaders[0];
   const start = anchor ? Date.parse(`${anchor.date}T00:00:00Z`) - (anchor.day - 1) * 86_400_000 : Number.NaN;
   const lastDatedDay = Math.max(...datedHeaders.map(header => header.day));
-  const data: Array<{ date: string; minutes: number }> = [];
+  const data: Array<{ date: string; minutes: number; items: string[] }> = [];
   for (let i = 0; i < rows.length; i += 1) {
     const cells = rows[i].c || [];
     const day = cellNumber(cells[0]);
     if (day === null || !Number.isInteger(day) || day < 1 || day > 365) continue;
     const date = parseDate(cells[1]) ?? (Number.isFinite(start) && day <= lastDatedDay ? new Date(start + (day - 1) * 86_400_000).toISOString().slice(0, 10) : null);
     let minutes = 0;
+    const items: string[] = [];
     for (let offset = 1; i + offset < rows.length; offset += 1) {
       if (cellNumber(rows[i + offset].c?.[0]) !== null) break;
       const value = cellNumber(rows[i + offset].c?.[4]);
-      if (value !== null) minutes += value;
+      const item = cellText(rows[i + offset].c?.[2]);
+      if (value !== null) {
+        minutes += value;
+        if (value > 0 && item && !items.includes(item)) items.push(item);
+      }
     }
-    if (date) data.push({ date, minutes });
+    if (date) data.push({ date, minutes, items });
   }
   return data;
 }

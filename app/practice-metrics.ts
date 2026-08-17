@@ -3,7 +3,7 @@ import type { PracticeDay } from "./practice-data";
 const DAY = 86_400_000;
 
 export type RollingPracticeSummary = {
-  days: Array<{ date: string; minutes: number; occurred: boolean }>;
+  days: Array<{ date: string; minutes: number; items: string[]; occurred: boolean }>;
   occurredDays: number;
   practiceDays: number;
   daysOff: number;
@@ -13,12 +13,13 @@ export type RollingPracticeSummary = {
 };
 
 export function summarizePracticePeriod(data: PracticeDay[], windowDays = 365): RollingPracticeSummary {
-  const minutesByDate = new Map(data.map(day => [day.date, day.minutes]));
-  const firstDate = [...minutesByDate.keys()].sort()[0];
+  const dayByDate = new Map(data.map(day => [day.date, day]));
+  const firstDate = [...dayByDate.keys()].sort()[0];
   const start = firstDate ? Date.parse(`${firstDate}T00:00:00Z`) : Date.now();
   const days = Array.from({ length: windowDays }, (_, index) => {
     const date = new Date(start + index * DAY).toISOString().slice(0, 10);
-    return { date, minutes: minutesByDate.get(date) ?? 0, occurred: minutesByDate.has(date) };
+    const day = dayByDate.get(date);
+    return { date, minutes: day?.minutes ?? 0, items: day?.items ?? [], occurred: Boolean(day) };
   });
   const occurred = days.filter(day => day.occurred);
   const practiced = occurred.filter(day => day.minutes > 0);
