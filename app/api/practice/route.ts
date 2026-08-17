@@ -3,6 +3,13 @@ import { snapshot, snapshotAverageHours, snapshotDaysOff, snapshotPracticeDays, 
 const FEED = "https://docs.google.com/spreadsheets/d/1oR05zGWqdEKNy1smZL2tV0WTp2uSknmo9p5riec1y7g/gviz/tq?tqx=out:json&gid=0";
 type SheetRow = { c: Array<{ v?: unknown; f?: string } | null> };
 
+function cellNumber(cell: SheetRow["c"][number]) {
+  const raw = cell?.v;
+  if (raw === null || raw === undefined || raw === "") return null;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
+}
+
 function parseRows(text: string) {
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
@@ -37,17 +44,25 @@ function parseDate(cell: SheetRow["c"][number]) {
 }
 
 function parseDays(rows: SheetRow[]) {
+  const datedHeaders = rows.flatMap(row => {
+    const day = cellNumber(row.c?.[0]);
+    const date = parseDate(row.c?.[1]);
+    return day !== null && Number.isInteger(day) && day >= 1 && day <= 365 && date ? [{ day, date }] : [];
+  });
+  const anchor = datedHeaders[0];
+  const start = anchor ? Date.parse(`${anchor.date}T00:00:00Z`) - (anchor.day - 1) * 86_400_000 : Number.NaN;
+  const lastDatedDay = Math.max(...datedHeaders.map(header => header.day));
   const data: Array<{ date: string; minutes: number }> = [];
   for (let i = 0; i < rows.length; i += 1) {
     const cells = rows[i].c || [];
-    const day = cells[0]?.v;
-    if (typeof day !== "number" || day < 1 || day > 365) continue;
-    const date = parseDate(cells[1]);
+    const day = cellNumber(cells[0]);
+    if (day === null || !Number.isInteger(day) || day < 1 || day > 365) continue;
+    const date = parseDate(cells[1]) ?? (Number.isFinite(start) && day <= lastDatedDay ? new Date(start + (day - 1) * 86_400_000).toISOString().slice(0, 10) : null);
     let minutes = 0;
     for (let offset = 1; i + offset < rows.length; offset += 1) {
-      if (typeof rows[i + offset].c?.[0]?.v === "number") break;
-      const value = Number(rows[i + offset].c?.[4]?.v);
-      if (Number.isFinite(value)) minutes += value;
+      if (cellNumber(rows[i + offset].c?.[0]) !== null) break;
+      const value = cellNumber(rows[i + offset].c?.[4]);
+      if (value !== null) minutes += value;
     }
     if (date) data.push({ date, minutes });
   }
@@ -62,10 +77,10 @@ export async function GET() {
     const pages = await Promise.all(responses.map(async response => parseRows(await response.text())));
     const data = parseDays(mergePages(pages));
     const summaryRows = pages[0].slice(0, 6);
-    const summaryHours = Number(summaryRows.find(row => typeof row.c?.[6]?.v === "number")?.c?.[6]?.v);
-    const practiceDays = Number(summaryRows.find(row => Number(row.c?.[4]?.v) >= 100)?.c?.[4]?.v);
-    const averageHours = Number(summaryRows.find(row => Number(row.c?.[5]?.v) > 0 && Number(row.c?.[5]?.v) < 10)?.c?.[5]?.v);
-    const daysOff = Number(summaryRows.find(row => Number(row.c?.[5]?.v) >= 10)?.c?.[5]?.v);
+    const summaryHours = summaryRows.map(row => cellNumber(row.c?.[6])).find(value => value !== null) ?? Number.NaN;
+    const practiceDays = summaryRows.map(row => cellNumber(row.c?.[4])).find(value => value !== null && value >= 100) ?? Number.NaN;
+    const averageHours = summaryRows.map(row => cellNumber(row.c?.[5])).find(value => value !== null && value > 0 && value < 10) ?? Number.NaN;
+    const daysOff = summaryRows.map(row => cellNumber(row.c?.[5])).find(value => value !== null && value >= 10) ?? Number.NaN;
     const totalHours = data.reduce((sum, day) => sum + day.minutes, 0) / 60;
     if (!Number.isFinite(summaryHours) || Math.abs(summaryHours - totalHours) >= 0.005) throw new Error("Daily values do not reconcile with G6");
     return Response.json({ data, totalHours, practiceDays: Number.isFinite(practiceDays) ? practiceDays : snapshotPracticeDays, averageHours: Number.isFinite(averageHours) ? averageHours : snapshotAverageHours, daysOff: Number.isFinite(daysOff) ? daysOff : snapshotDaysOff, live: true, checkedAt: new Date().toISOString() });
