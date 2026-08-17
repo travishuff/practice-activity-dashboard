@@ -14,6 +14,7 @@ function duration(minutes: number) { const h = Math.floor(minutes / 60); const m
 export default function ActivityDashboard({ initial }: { initial: PracticeDay[] }) {
   const [payload, setPayload] = useState<Payload>({ data: initial, totalHours: 562.85, practiceDays: 343, averageHours: 1.66, daysOff: 61, live: false, checkedAt: null });
   const [selected, setSelected] = useState<PracticeDay | null>(null);
+  const [popover, setPopover] = useState<{ label: string; x: number; y: number } | null>(null);
 
   useEffect(() => {
     const refresh = () => fetch("/api/practice", { cache: "no-store" }).then(r => r.json()).then(setPayload).catch(() => undefined);
@@ -51,7 +52,7 @@ export default function ActivityDashboard({ initial }: { initial: PracticeDay[] 
   return (
     <main className="shell">
       <header className="topbar">
-        <a className="brand" href="#activity" aria-label="Practice activity home"><span>PA</span> Practice Activity</a>
+        <a className="brand" href="#activity" aria-label="Practice activity home"><span>PA</span> Practice Activity: Travis Huff</a>
         <a className="sheet-link" href="https://docs.google.com/spreadsheets/d/1oR05zGWqdEKNy1smZL2tV0WTp2uSknmo9p5riec1y7g/edit" target="_blank" rel="noreferrer">Open source sheet ↗</a>
       </header>
       <section className="hero" id="activity">
@@ -59,11 +60,11 @@ export default function ActivityDashboard({ initial }: { initial: PracticeDay[] 
         <div className={`sync ${payload.live ? "is-live" : ""}`}><i />{payload.live ? "Live · refreshes every minute" : "Snapshot · sheet access is restricted"}</div>
       </section>
       <section className="stats" aria-label="Practice summary">
-        <article><span>Total practice</span><strong>{payload.totalHours.toFixed(2)}<small> hours</small></strong></article>
-        <article><span>Practice days</span><strong>{payload.practiceDays}<small> days</small></strong></article>
-        <article><span>Days off</span><strong>{payload.daysOff}<small> days</small></strong></article>
+        <article><span>Total practice time</span><strong>{payload.totalHours.toFixed(2)}<small> hours</small></strong></article>
         <article><span>Daily average</span><strong>{payload.averageHours.toFixed(2)}<small> hours</small></strong></article>
         <article><span>Latest streak</span><strong>{view.streak}<small> days</small></strong></article>
+        <article><span>Practice days</span><strong>{payload.practiceDays}<small> days</small></strong></article>
+        <article><span>Days off</span><strong>{payload.daysOff}<small> days</small></strong></article>
       </section>
       <section className="activity-card">
         <div className="card-head"><div><h2>Daily practice</h2><p>Color intensity represents total minutes practiced.</p></div><span>{payload.data[0]?.date.slice(0,4)}—{new Date().getFullYear()}</span></div>
@@ -74,11 +75,13 @@ export default function ActivityDashboard({ initial }: { initial: PracticeDay[] 
             <div className="heatmap">
               {view.cells.map(cell => {
                 const label = `${localDate(cell.date).toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric", year:"numeric" })}: ${cell.minutes ? duration(cell.minutes) : "No practice"}`;
-                return <button key={cell.date} className={`cell level-${level(cell.minutes)} ${cell.inRange ? "" : "outside"}`} aria-label={label} title={label} onClick={() => setSelected({ date: cell.date, minutes: cell.minutes })} />;
+                const showPopover = (target: HTMLButtonElement) => { const rect = target.getBoundingClientRect(); setPopover({ label, x: rect.left + rect.width / 2, y: rect.top }); };
+                return <button key={cell.date} className={`cell level-${level(cell.minutes)} ${cell.inRange ? "" : "outside"}`} aria-label={label} onMouseEnter={event => showPopover(event.currentTarget)} onMouseLeave={() => setPopover(null)} onFocus={event => showPopover(event.currentTarget)} onBlur={() => setPopover(null)} onClick={() => setSelected({ date: cell.date, minutes: cell.minutes })} />;
               })}
             </div>
           </div>
         </div>
+        {popover && <div className="cell-popover" style={{ left: popover.x, top: popover.y }} role="tooltip">{popover.label}</div>}
         <div className="card-foot"><p>{selected ? <><b>{localDate(selected.date).toLocaleDateString("en-US", { month:"long", day:"numeric", year:"numeric" })}</b><span>{selected.minutes ? duration(selected.minutes) : "No practice recorded"}</span></> : <span>Select a day to see its total</span>}</p><div className="legend"><span>Less</span>{[0,1,2,3,4].map(n => <i key={n} className={`cell level-${n}`} />)}<span>More</span></div></div>
       </section>
       <footer>{payload.checkedAt ? `Source checked ${new Date(payload.checkedAt).toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit" })}` : "Checking source…"}</footer>
