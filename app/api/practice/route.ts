@@ -1,4 +1,4 @@
-import { snapshot, snapshotAverageHours, snapshotDaysOff, snapshotPracticeDays, snapshotTotalHours } from "../../practice-data";
+import { snapshot, snapshotTotalHours } from "../../practice-data";
 
 const FEED = "https://docs.google.com/spreadsheets/d/1oR05zGWqdEKNy1smZL2tV0WTp2uSknmo9p5riec1y7g/gviz/tq?tqx=out:json&gid=0";
 type SheetRow = { c: Array<{ v?: unknown; f?: string } | null> };
@@ -78,13 +78,10 @@ export async function GET() {
     const data = parseDays(mergePages(pages));
     const summaryRows = pages[0].slice(0, 6);
     const summaryHours = summaryRows.map(row => cellNumber(row.c?.[6])).find(value => value !== null) ?? Number.NaN;
-    const practiceDays = summaryRows.map(row => cellNumber(row.c?.[4])).find(value => value !== null && value >= 100) ?? Number.NaN;
-    const averageHours = summaryRows.map(row => cellNumber(row.c?.[5])).find(value => value !== null && value > 0 && value < 10) ?? Number.NaN;
-    const daysOff = summaryRows.map(row => cellNumber(row.c?.[5])).find(value => value !== null && value >= 10) ?? Number.NaN;
     const totalHours = data.reduce((sum, day) => sum + day.minutes, 0) / 60;
     if (!Number.isFinite(summaryHours) || Math.abs(summaryHours - totalHours) >= 0.005) throw new Error("Daily values do not reconcile with G6");
-    return Response.json({ data, totalHours, practiceDays: Number.isFinite(practiceDays) ? practiceDays : snapshotPracticeDays, averageHours: Number.isFinite(averageHours) ? averageHours : snapshotAverageHours, daysOff: Number.isFinite(daysOff) ? daysOff : snapshotDaysOff, live: true, checkedAt: new Date().toISOString() });
+    return Response.json({ data, totalHours, live: true, checkedAt: new Date().toISOString() });
   } catch {
-    return Response.json({ data: snapshot, totalHours: snapshotTotalHours, practiceDays: snapshotPracticeDays, averageHours: snapshotAverageHours, daysOff: snapshotDaysOff, live: false, checkedAt: new Date().toISOString() });
+    return Response.json({ data: snapshot, totalHours: snapshotTotalHours, live: false, checkedAt: new Date().toISOString() });
   }
 }

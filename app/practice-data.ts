@@ -19,6 +19,3 @@ export const snapshot: PracticeDay[] = [
   .sort((a, b) => a.date.localeCompare(b.date));
 
 export const snapshotTotalHours = 562.85;
-export const snapshotPracticeDays = 343;
-export const snapshotAverageHours = 1.66;
-export const snapshotDaysOff = 61;

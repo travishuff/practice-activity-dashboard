@@ -2,17 +2,28 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { PracticeDay } from "./practice-data";
+import { summarizePracticeWindow } from "./practice-metrics";
 
-type Payload = { data: PracticeDay[]; totalHours: number; practiceDays: number; averageHours: number; daysOff: number; live: boolean; checkedAt: string | null };
+type Payload = { data: PracticeDay[]; totalHours: number; live: boolean; checkedAt: string | null };
 const DAY = 86_400_000;
 
 function iso(date: Date) { return date.toISOString().slice(0, 10); }
 function localDate(value: string) { return new Date(`${value}T12:00:00`); }
 function level(minutes: number) { return minutes === 0 ? 0 : minutes < 60 ? 1 : minutes < 120 ? 2 : minutes < 180 ? 3 : 4; }
-function duration(minutes: number) { const h = Math.floor(minutes / 60); const m = minutes % 60; return h ? `${h}h${m ? ` ${m}m` : ""}` : `${m}m`; }
+function duration(minutes: number) { const rounded = Math.round(minutes); const h = Math.floor(rounded / 60); const m = rounded % 60; return h ? `${h}h${m ? ` ${m}m` : ""}` : `${m}m`; }
+
+function RangeChart({ values, format, labels }: { values: [number, number, number]; format: (value: number) => string; labels: [string, string, string] }) {
+  return (
+    <div className="range-chart" role="img" aria-label={`${labels[0]} ${format(values[0])}, ${labels[1]} ${format(values[1])}, ${labels[2]} ${format(values[2])}`}>
+      <div className="range-values">{values.map((value, index) => <b key={labels[index]}>{format(value)}</b>)}</div>
+      <div className="range-line" aria-hidden="true"><i /><i /><i /></div>
+      <div className="range-labels">{labels.map(label => <small key={label}>{label}</small>)}</div>
+    </div>
+  );
+}
 
 export default function ActivityDashboard({ initial }: { initial: PracticeDay[] }) {
-  const [payload, setPayload] = useState<Payload>({ data: initial, totalHours: 562.85, practiceDays: 343, averageHours: 1.66, daysOff: 61, live: false, checkedAt: null });
+  const [payload, setPayload] = useState<Payload>({ data: initial, totalHours: 562.85, live: false, checkedAt: null });
   const [selected, setSelected] = useState<PracticeDay | null>(null);
   const [popover, setPopover] = useState<{ label: string; x: number; y: number } | null>(null);
 
@@ -26,6 +37,7 @@ export default function ActivityDashboard({ initial }: { initial: PracticeDay[] 
   const view = useMemo(() => {
     const map = new Map(payload.data.map(day => [day.date, day.minutes]));
     const end = new Date(); end.setHours(12, 0, 0, 0);
+    const summary = summarizePracticeWindow(payload.data, iso(end));
     const start = new Date(end.getTime() - 364 * DAY);
     start.setDate(start.getDate() - start.getDay());
     const cells: Array<{ date: string; minutes: number; inRange: boolean }> = [];
@@ -41,12 +53,7 @@ export default function ActivityDashboard({ initial }: { initial: PracticeDay[] 
       const d = localDate(cell.date); const name = d.toLocaleString("en-US", { month: "short" });
       if (name !== previous) { months.push({ label: name, column: Math.floor(index / 7) + 1 }); previous = name; }
     });
-    const visible = payload.data.filter(d => localDate(d.date) >= new Date(end.getTime() - 364 * DAY) && localDate(d.date) <= end);
-    const practiced = visible.filter(day => day.minutes > 0);
-    let streak = 0;
-    const sorted = [...practiced].sort((a, b) => b.date.localeCompare(a.date));
-    if (sorted.length) { let cursor = localDate(sorted[0].date); for (const day of sorted) { if (day.date === iso(cursor)) { streak++; cursor = new Date(cursor.getTime() - DAY); } else if (localDate(day.date) < cursor) break; } }
-    return { cells, weeks, months, streak };
+    return { cells, weeks, months, summary };
   }, [payload]);
 
   return (
@@ -60,11 +67,18 @@ export default function ActivityDashboard({ initial }: { initial: PracticeDay[] 
         <div className={`sync ${payload.live ? "is-live" : ""}`}><i />{payload.live ? "Live · refreshes every minute" : "Snapshot · sheet access is restricted"}</div>
       </section>
       <section className="stats" aria-label="Practice summary">
-        <article><span>Total practice time</span><strong>{payload.totalHours.toFixed(2)}<small> hours</small></strong></article>
-        <article><span>Daily average</span><strong>{payload.averageHours.toFixed(2)}<small> hours</small></strong></article>
-        <article><span>Latest streak</span><strong>{view.streak}<small> days</small></strong></article>
-        <article><span>Practice days</span><strong>{payload.practiceDays}<small> days</small></strong></article>
-        <article><span>Days off</span><strong>{payload.daysOff}<small> days</small></strong></article>
+        <article className="total-card"><span>Total practice time</span><strong>{payload.totalHours.toFixed(2)}<small> hours</small></strong></article>
+        <article className="range-card"><span>Daily practice range</span><RangeChart values={[view.summary.daily.minimum, view.summary.daily.average, view.summary.daily.maximum]} format={duration} labels={["Shortest", "Average", "Longest"]} /></article>
+        <article className="range-card"><span>Practice streaks</span><RangeChart values={[view.summary.streaks.minimum, view.summary.streaks.average, view.summary.streaks.maximum]} format={value => `${Number.isInteger(value) ? value : value.toFixed(1)}d`} labels={["Shortest", "Average", "Longest"]} /></article>
+        <article className="split-card">
+          <span>365-day activity</span>
+          <div className="split-values"><strong>{view.summary.practiceDays}<small> practiced</small></strong><strong>{view.summary.daysOff}<small> off</small></strong></div>
+          <div className="split-bar" role="img" aria-label={`${view.summary.practiceDays} practice days and ${view.summary.daysOff} days off, 365 days total`}>
+            <i className="practiced" style={{ width: `${view.summary.practiceDays / 365 * 100}%` }} />
+            <i className="off" style={{ width: `${view.summary.daysOff / 365 * 100}%` }} />
+          </div>
+          <div className="split-legend"><small><i className="practiced" />Practice days</small><small><i className="off" />Days off</small><small>365 total</small></div>
+        </article>
       </section>
       <section className="activity-card">
         <div className="card-head"><div><h2>Daily practice</h2><p>Color intensity represents total minutes practiced.</p></div><span>{payload.data[0]?.date.slice(0,4)}—{new Date().getFullYear()}</span></div>
