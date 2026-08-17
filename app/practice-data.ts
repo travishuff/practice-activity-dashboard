@@ -1,4 +1,4 @@
-export type PracticeDay = { date: string; minutes: number };
+export type PracticeDay = { date: string; minutes: number; items?: string[] };
 
 export const snapshot: PracticeDay[] = [
 ["2025-09-07",95],["2025-09-08",60],["2025-09-09",75],["2025-09-10",70],["2025-09-11",90],["2025-09-12",80],["2025-09-13",190],["2025-09-14",170],["2025-09-15",155],["2025-09-16",110],["2025-09-17",135],["2025-09-18",150],["2025-09-19",110],["2025-09-20",120],["2025-09-21",180],["2025-09-22",145],["2025-09-23",90],["2025-09-24",190],["2025-09-25",100],["2025-09-26",165],["2025-09-27",90],["2025-09-28",60],["2025-09-29",175],["2025-09-30",135],
@@ -19,6 +19,3 @@ export const snapshot: PracticeDay[] = [
   .sort((a, b) => a.date.localeCompare(b.date));
 
 export const snapshotTotalHours = 562.85;
-export const snapshotPracticeDays = 343;
-export const snapshotAverageHours = 1.66;
-export const snapshotDaysOff = 61;
