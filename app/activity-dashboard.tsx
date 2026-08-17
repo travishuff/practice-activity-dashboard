@@ -70,7 +70,7 @@ export default function ActivityDashboard({ initial }: { initial: PracticeDay[] 
         <div className="chart-scroll">
           <div className="chart" style={{ "--weeks": view.weeks } as React.CSSProperties}>
             <div className="month-labels">{view.months.map((month, i) => <span key={`${month.label}-${i}`} style={{ gridColumn: month.column }}>{month.label}</span>)}</div>
-            <div className="day-labels"><span>Mon</span><span>Wed</span><span>Fri</span></div>
+            <div className="day-labels"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
             <div className="heatmap">
               {view.cells.map(cell => {
                 const label = `${localDate(cell.date).toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric", year:"numeric" })}: ${cell.minutes ? duration(cell.minutes) : "No practice"}`;
