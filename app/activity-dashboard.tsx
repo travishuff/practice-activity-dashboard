@@ -116,7 +116,6 @@ export default function ActivityDashboard({ initial, initialTotalHours }: { init
     <main className="shell">
       <header className="topbar">
         <a className="brand" href="#activity" aria-label="Practice activity home"><span>PA</span> Practice Activity: Travis Huff</a>
-        <a className="sheet-link" href="https://docs.google.com/spreadsheets/d/1oR05zGWqdEKNy1smZL2tV0WTp2uSknmo9p5riec1y7g/edit" target="_blank" rel="noreferrer">Open source sheet ↗</a>
       </header>
       <section className="activity-card" id="activity">
         <div className="card-head">
