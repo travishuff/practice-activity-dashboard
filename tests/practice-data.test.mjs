@@ -11,7 +11,7 @@ test("snapshot has one value for every occurred source date", () => {
   assert.equal(snapshot.some(day => day.date === "2026-07-10"), false);
 });
 
-test("daily values reconcile to the corrected G6 total", () => {
+test("snapshot total is derived from the daily values", () => {
   const totalMinutes = snapshot.reduce((sum, day) => sum + day.minutes, 0);
   assert.equal(totalMinutes, 33_846);
   assert.equal(Number((totalMinutes / 60).toFixed(2)), snapshotTotalHours);

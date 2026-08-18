@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildSheetDataFeed,
+  calculateTotalHours,
   createFallbackPayload,
   fetchPracticePayload,
   parseGvizRows,
@@ -48,7 +50,7 @@ test("a blank column-B cell with no practice remains a future day", () => {
   });
 });
 
-test("undated practice is reconciled with an explicit source warning", () => {
+test("undated practice is retained with an explicit source warning", () => {
   const rows = [...practiceRows];
   rows[6] = row([null, null, "Future practice", null, 45]);
   assert.deepEqual(parsePracticeDays(rows), {
@@ -61,17 +63,15 @@ test("undated practice is reconciled with an explicit source warning", () => {
   });
 });
 
-test("the live payload reconciles daily minutes against an exact G6 response", async () => {
+test("the live payload calculates total hours from daily minutes", async () => {
   const fetcher = async url => {
     if (url.endsWith("range=A:E")) return new Response(gviz(practiceRows));
-    if (url.endsWith("range=G6")) return new Response(gviz([row([1.5])]));
     return new Response(null, { status: 404 });
   };
 
   const payload = await fetchPracticePayload(
     fetcher,
     "https://example.test/sheet?range=A:E",
-    "https://example.test/sheet?range=G6",
   );
   assert.equal(payload.live, true);
   assert.equal(payload.totalHours, 1.5);
@@ -80,17 +80,29 @@ test("the live payload reconciles daily minutes against an exact G6 response", a
   assert.deepEqual(payload.data[0].items, ["Rudiments", "Grooves"]);
 });
 
-test("a G6 mismatch is classified as a reconciliation failure", async () => {
-  const fetcher = async url => new Response(
-    url.endsWith("range=G6") ? gviz([row([2])]) : gviz(practiceRows),
+test("total hours are derived from every occurred day's minutes", () => {
+  assert.equal(
+    calculateTotalHours([
+      { date: "2025-09-07", minutes: 90 },
+      { date: "2025-09-08", minutes: 0 },
+      { date: "2025-09-09", minutes: 45 },
+    ]),
+    2.25,
   );
-  await assert.rejects(
-    fetchPracticePayload(
-      fetcher,
-      "https://example.test/sheet?range=A:E",
-      "https://example.test/sheet?range=G6",
-    ),
-    error => error instanceof PracticeSheetError && error.code === "reconciliation_failed",
+});
+
+test("Google Sheets sharing URLs become A:E feeds", () => {
+  assert.equal(
+    buildSheetDataFeed("https://docs.google.com/spreadsheets/d/example-sheet/edit?usp=sharing#gid=42"),
+    "https://docs.google.com/spreadsheets/d/example-sheet/gviz/tq?tqx=out:json&gid=42&range=A:E",
+  );
+  assert.equal(
+    buildSheetDataFeed("https://docs.google.com/spreadsheets/d/example-sheet/edit?gid=7"),
+    "https://docs.google.com/spreadsheets/d/example-sheet/gviz/tq?tqx=out:json&gid=7&range=A:E",
+  );
+  assert.throws(
+    () => buildSheetDataFeed("https://example.com/not-a-sheet"),
+    error => error instanceof PracticeSheetError && error.code === "invalid_source",
   );
 });
 
