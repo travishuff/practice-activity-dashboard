@@ -5,7 +5,6 @@ export type SheetRow = { c?: SheetCell[] };
 export type PracticeDataErrorCode =
   | "source_unavailable"
   | "invalid_source"
-  | "reconciliation_failed"
   | "refresh_failed";
 
 export type PracticePayload = {
@@ -140,8 +139,8 @@ export function parsePracticeDays(rows: SheetRow[]) {
     }
 
     // A blank column-B cell with no practice remains a future day. If minutes
-    // exist, the source contradicts itself because G6 includes them; preserve
-    // reconciliation but expose the inferred date as a visible warning.
+    // exist, preserve the practice entry and expose the inferred date as a
+    // visible warning.
     if (!header.date && minutes === 0) continue;
     const resolvedDate = header.date ?? expectedDate;
     if (!header.date) {
@@ -157,26 +156,34 @@ export function parsePracticeDays(rows: SheetRow[]) {
   return { data, warnings };
 }
 
-export function parseSummaryHours(rows: SheetRow[]) {
-  const value = cellNumber(rows[0]?.c?.[0]);
-  if (value === null) {
-    throw new PracticeSheetError("invalid_source", "Cell G6 does not contain a numeric total");
-  }
-  return value;
+export function calculateTotalHours(data: PracticeDay[]) {
+  return data.reduce((sum, day) => sum + day.minutes, 0) / 60;
 }
 
-export function reconcilePracticeData(data: PracticeDay[], summaryHours: number) {
-  const totalHours = data.reduce((sum, day) => sum + day.minutes, 0) / 60;
-  if (Number(totalHours.toFixed(2)) !== Number(summaryHours.toFixed(2))) {
-    throw new PracticeSheetError("reconciliation_failed", "Daily practice values do not match cell G6");
+export function buildSheetDataFeed(sheetUrl: string) {
+  let url: URL;
+  try {
+    url = new URL(sheetUrl);
+  } catch {
+    throw new PracticeSheetError("invalid_source", "GOOGLE_SHEET_URL is not a valid URL");
   }
-  return totalHours;
+
+  const id = url.pathname.match(/^\/spreadsheets\/d\/([^/]+)/)?.[1];
+  if (url.hostname !== "docs.google.com" || !id) {
+    throw new PracticeSheetError(
+      "invalid_source",
+      "GOOGLE_SHEET_URL must be a Google Sheets sharing URL",
+    );
+  }
+
+  const hash = new URLSearchParams(url.hash.replace(/^#/, ""));
+  const gid = url.searchParams.get("gid") ?? hash.get("gid") ?? "0";
+  return `https://docs.google.com/spreadsheets/d/${encodeURIComponent(id)}/gviz/tq?tqx=out:json&gid=${encodeURIComponent(gid)}&range=A:E`;
 }
 
 export async function fetchPracticePayload(
   fetcher: typeof fetch,
   dataUrl: string,
-  totalUrl: string,
   timeoutMs = 10_000,
 ): Promise<PracticePayload> {
   const controller = new AbortController();
@@ -188,23 +195,16 @@ export async function fetchPracticePayload(
       cache: "no-store",
       signal: controller.signal,
     };
-    const [dataResponse, totalResponse] = await Promise.all([
-      fetcher(dataUrl, options),
-      fetcher(totalUrl, options),
-    ]);
-    if (!dataResponse.ok || !totalResponse.ok) {
+    const dataResponse = await fetcher(dataUrl, options);
+    if (!dataResponse.ok) {
       throw new PracticeSheetError("source_unavailable", "The live sheet is temporarily unavailable");
     }
 
-    const [dataRows, totalRows] = await Promise.all([
-      dataResponse.text().then(parseGvizRows),
-      totalResponse.text().then(parseGvizRows),
-    ]);
+    const dataRows = parseGvizRows(await dataResponse.text());
     const { data, warnings } = parsePracticeDays(dataRows);
-    const totalHours = reconcilePracticeData(data, parseSummaryHours(totalRows));
     return {
       data,
-      totalHours,
+      totalHours: calculateTotalHours(data),
       live: true,
       checkedAt: new Date().toISOString(),
       error: null,

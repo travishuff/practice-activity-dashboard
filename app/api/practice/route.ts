@@ -1,14 +1,17 @@
 import { snapshot, snapshotTotalHours } from "../../practice-data";
-import { createFallbackPayload, fetchPracticePayload } from "../../practice-sheet";
+import {
+  buildSheetDataFeed,
+  createFallbackPayload,
+  fetchPracticePayload,
+} from "../../practice-sheet";
 
-const BASE_FEED = "https://docs.google.com/spreadsheets/d/1oR05zGWqdEKNy1smZL2tV0WTp2uSknmo9p5riec1y7g/gviz/tq?tqx=out:json&gid=0";
-const DATA_FEED = `${BASE_FEED}&range=A:E`;
-const TOTAL_FEED = `${BASE_FEED}&range=G6`;
+const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1oR05zGWqdEKNy1smZL2tV0WTp2uSknmo9p5riec1y7g/edit#gid=0";
 const NO_STORE = { "cache-control": "no-store, max-age=0" };
 
 export async function GET() {
   try {
-    const payload = await fetchPracticePayload(fetch, DATA_FEED, TOTAL_FEED);
+    const sheetUrl = process.env.GOOGLE_SHEET_URL ?? DEFAULT_SHEET_URL;
+    const payload = await fetchPracticePayload(fetch, buildSheetDataFeed(sheetUrl));
     if (payload.warnings.length) console.warn("Practice sheet data warnings", payload.warnings);
     return Response.json(payload, { headers: NO_STORE });
   } catch (error) {
