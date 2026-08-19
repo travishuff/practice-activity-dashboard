@@ -27,6 +27,220 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: wait;
+}
+
+.loading-shell,
+.setup-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 36px 20px;
+}
+
+.loading-shell {
+  align-content: center;
+  color: var(--muted);
+  text-align: center;
+}
+
+.setup-card {
+  width: min(100%, 680px);
+  padding: clamp(28px, 5vw, 48px);
+  border: 1px solid var(--line);
+  border-radius: 26px;
+  background: var(--card);
+  box-shadow: 0 24px 70px rgba(27, 48, 35, 0.09);
+}
+
+.setup-brand {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.loading-shell .setup-brand {
+  margin: 0 auto 12px;
+}
+
+.eyebrow {
+  margin: 26px 0 8px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.setup-card h1 {
+  margin: 0;
+  font-size: clamp(28px, 5vw, 40px);
+  letter-spacing: -0.04em;
+}
+
+.setup-intro {
+  max-width: 570px;
+  margin: 14px 0 26px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.setup-steps {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.setup-steps li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.setup-steps li > span {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--off);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.setup-steps li > div {
+  line-height: 1.4;
+}
+
+.privacy-note {
+  margin-top: 24px;
+  padding: 14px 16px;
+  border: 1px solid #f2ccb2;
+  border-radius: 12px;
+  background: #fff8f3;
+  color: #684531;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.privacy-note b {
+  display: block;
+  margin-bottom: 3px;
+}
+
+.help-link {
+  margin: 14px 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.help-link:hover {
+  text-decoration: underline;
+}
+
+.setup-form {
+  margin-top: 28px;
+  padding-top: 26px;
+  border-top: 1px solid var(--line);
+}
+
+.setup-form label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.setup-form input {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid #cbd2cd;
+  border-radius: 10px;
+  outline: none;
+  background: #fff;
+  color: var(--ink);
+}
+
+.setup-form input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(223, 100, 20, 0.12);
+}
+
+.setup-form small {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.setup-error {
+  margin: 12px 0 0;
+  color: #a63721;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.setup-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.primary-button,
+.secondary-button,
+.settings-button {
+  padding: 10px 15px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.primary-button {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.primary-button:disabled {
+  opacity: 0.65;
+}
+
+.secondary-button,
+.settings-button {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+}
+
+.settings-button {
+  margin-left: auto;
+}
+
 .shell {
   min-height: 100vh;
   max-width: 1540px;
@@ -501,6 +715,22 @@ footer {
 }
 
 @media (max-width: 560px) {
+  .setup-shell {
+    padding: 0;
+  }
+
+  .setup-card {
+    min-height: 100vh;
+    padding: 28px 20px;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .setup-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
   .shell {
     padding: 0 16px 28px;
   }
@@ -511,6 +741,11 @@ footer {
 
   .brand {
     font-size: 14px;
+  }
+
+  .settings-button {
+    padding: 8px 10px;
+    font-size: 11px;
   }
 
   .activity-card {

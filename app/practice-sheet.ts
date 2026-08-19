@@ -3,6 +3,7 @@ import type { PracticeDay } from "./practice-data";
 export type SheetCell = { v?: unknown; f?: string } | null | undefined;
 export type SheetRow = { c?: SheetCell[] };
 export type PracticeDataErrorCode =
+  | "not_configured"
   | "source_unavailable"
   | "invalid_source"
   | "refresh_failed";
@@ -17,10 +18,10 @@ export type PracticePayload = {
 };
 
 export class PracticeSheetError extends Error {
-  public readonly code: Exclude<PracticeDataErrorCode, "refresh_failed">;
+  public readonly code: Exclude<PracticeDataErrorCode, "refresh_failed" | "not_configured">;
 
   constructor(
-    code: Exclude<PracticeDataErrorCode, "refresh_failed">,
+    code: Exclude<PracticeDataErrorCode, "refresh_failed" | "not_configured">,
     message: string,
   ) {
     super(message);
@@ -165,14 +166,14 @@ export function buildSheetDataFeed(sheetUrl: string) {
   try {
     url = new URL(sheetUrl);
   } catch {
-    throw new PracticeSheetError("invalid_source", "GOOGLE_SHEET_URL is not a valid URL");
+    throw new PracticeSheetError("invalid_source", "Enter a valid Google Sheets sharing URL");
   }
 
   const id = url.pathname.match(/^\/spreadsheets\/d\/([^/]+)/)?.[1];
   if (url.hostname !== "docs.google.com" || !id) {
     throw new PracticeSheetError(
       "invalid_source",
-      "GOOGLE_SHEET_URL must be a Google Sheets sharing URL",
+      "The URL must be a Google Sheets sharing URL",
     );
   }
 
@@ -197,10 +198,21 @@ export async function fetchPracticePayload(
     };
     const dataResponse = await fetcher(dataUrl, options);
     if (!dataResponse.ok) {
-      throw new PracticeSheetError("source_unavailable", "The live sheet is temporarily unavailable");
+      const message = [401, 403, 404].includes(dataResponse.status)
+        ? "The Practice Log is not shared as Anyone with the link · Viewer"
+        : "The live sheet is temporarily unavailable";
+      throw new PracticeSheetError("source_unavailable", message);
     }
 
-    const dataRows = parseGvizRows(await dataResponse.text());
+    const responseText = await dataResponse.text();
+    if (responseText.includes("accounts.google.com") || responseText.includes("ServiceLogin")) {
+      throw new PracticeSheetError(
+        "source_unavailable",
+        "The Practice Log is not shared as Anyone with the link · Viewer",
+      );
+    }
+
+    const dataRows = parseGvizRows(responseText);
     const { data, warnings } = parsePracticeDays(dataRows);
     return {
       data,

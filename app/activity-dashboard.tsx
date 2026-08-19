@@ -12,29 +12,6 @@ function localDate(value: string) { return new Date(`${value}T12:00:00`); }
 function level(minutes: number) { return minutes === 0 ? 0 : minutes < 60 ? 1 : minutes < 120 ? 2 : minutes < 180 ? 3 : 4; }
 function duration(minutes: number) { const rounded = Math.round(minutes); const h = Math.floor(rounded / 60); const m = rounded % 60; return h ? `${h}h${m ? ` ${m}m` : ""}` : `${m}m`; }
 
-function isPracticePayload(value: unknown): value is PracticePayload {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Partial<PracticePayload>;
-  const validError = candidate.error === null || (
-    Boolean(candidate.error)
-    && typeof candidate.error?.code === "string"
-    && typeof candidate.error?.message === "string"
-  );
-  return Array.isArray(candidate.data)
-    && candidate.data.every(day => (
-      day
-      && typeof day.date === "string"
-      && Number.isFinite(day.minutes)
-      && (day.items === undefined || (Array.isArray(day.items) && day.items.every(item => typeof item === "string")))
-    ))
-    && Number.isFinite(candidate.totalHours)
-    && typeof candidate.live === "boolean"
-    && (candidate.checkedAt === null || typeof candidate.checkedAt === "string")
-    && validError
-    && Array.isArray(candidate.warnings)
-    && candidate.warnings.every(warning => typeof warning === "string");
-}
-
 function RangeChart({ values, format, labels }: { values: [number, number, number]; format: (value: number, index: number) => string; labels: [string, string, string] }) {
   return (
     <div className="range-chart" role="img" aria-label={values.map((value, index) => `${labels[index]} ${format(value, index)}`).join(", ")}>
@@ -45,8 +22,14 @@ function RangeChart({ values, format, labels }: { values: [number, number, numbe
   );
 }
 
-export default function ActivityDashboard({ initial, initialTotalHours }: { initial: PracticeDay[]; initialTotalHours: number }) {
-  const [payload, setPayload] = useState<PracticePayload>({ data: initial, totalHours: initialTotalHours, live: false, checkedAt: null, error: null, warnings: [] });
+export default function ActivityDashboard({
+  initialPayload,
+  onChangeSheet,
+}: {
+  initialPayload: PracticePayload;
+  onChangeSheet: () => void | Promise<void>;
+}) {
+  const [payload, setPayload] = useState<PracticePayload>(initialPayload);
   const [selected, setSelected] = useState<(PracticeDay & { occurred: boolean }) | null>(null);
   const [popover, setPopover] = useState<{ date: string; state: string; items: string[]; x: number; y: number } | null>(null);
 
@@ -56,12 +39,13 @@ export default function ActivityDashboard({ initial, initialTotalHours }: { init
       controller?.abort();
       controller = new AbortController();
       try {
-        const response = await fetch("/api/practice", { cache: "no-store", signal: controller.signal });
-        const next: unknown = await response.json();
-        if (!isPracticePayload(next) || (!response.ok && next.live)) throw new Error("Invalid practice response");
-        setPayload(current => next.live || !current.checkedAt
-          ? next
-          : { ...current, live: false, error: next.error });
+        const result = await window.practiceAPI.getPracticeData();
+        if (controller.signal.aborted) return;
+        if (result.ok) {
+          setPayload(result.payload);
+        } else {
+          setPayload(current => ({ ...current, live: false, error: result.error }));
+        }
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setPayload(current => ({
@@ -71,7 +55,6 @@ export default function ActivityDashboard({ initial, initialTotalHours }: { init
         }));
       }
     };
-    void refresh();
     const timer = window.setInterval(() => void refresh(), 60_000);
     return () => {
       window.clearInterval(timer);
@@ -115,7 +98,10 @@ export default function ActivityDashboard({ initial, initialTotalHours }: { init
   return (
     <main className="shell">
       <header className="topbar">
-        <a className="brand" href="#activity" aria-label="Practice activity home"><span>PA</span> Practice Activity: Travis Huff</a>
+        <a className="brand" href="#activity" aria-label="Practice activity home"><span>PA</span> Practice Activity</a>
+        <button className="settings-button" type="button" onClick={() => void onChangeSheet()}>
+          Change Practice Log
+        </button>
       </header>
       <section className="activity-card" id="activity">
         <div className="card-head">
