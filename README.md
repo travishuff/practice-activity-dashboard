@@ -1,78 +1,102 @@
-# Practice Activity Dashboard
+# Practice Activity
 
-This repo turns Mark Walker's Practice Log spreadsheet, used in Google Sheets,
-into a live 365-day practice dashboard. It reads the existing Practice Log
-layout, so you do not need to redesign the sheet or add a summary formula.
+## ⬇️ Download the macOS installer
 
-## Features
+[**Download Practice Activity for macOS →**](https://github.com/travishuff/practice-activity-dashboard/releases/latest)
 
-- Daily practice heatmap with practiced items in each day's details
-- Total time, daily averages, streaks, practice days, and days off
-- Automatic live refresh every minute
-- Responsive desktop and mobile layouts
-- Saved fallback data when the live sheet is temporarily unavailable
+The Releases page contains the universal `.dmg` installer for both Apple Silicon
+and Intel Macs.
 
-## Use with your own Google Sheet
+Practice Activity is a macOS desktop dashboard for the Mark Walker Practice Log.
+It reads the existing Google Sheets layout and displays a live 365-day practice
+heatmap and summary.
 
-Start with a copy of Mark Walker's Practice Log in Google Sheets. The dashboard
-uses its existing columns:
+## Install on macOS
 
-- Column A: numbered day in the 365-day period
-- Column B: date; a blank date means the day has not occurred yet
-- Column C: items practiced
-- Column E: minutes practiced
+The release artifact is a universal `.dmg` that works on Apple Silicon and Intel
+Macs.
 
-Total practice time is calculated from column E; no separate summary cell is
-required.
+1. Open `Practice Activity.dmg`.
+2. Drag **Practice Activity** into **Applications**.
+3. Open the app.
+4. Follow the first-run instructions to share and connect the Practice Log.
 
-### Easiest setup on macOS
+This development build is unsigned. The first time it is opened, macOS may say
+it cannot verify the developer. Control-click **Practice Activity** in
+Applications, choose **Open**, then choose **Open** again. Signing and
+notarization can be added later without changing the app architecture.
 
-1. Download this repo as a ZIP and unzip it.
-2. Double-click `START-HERE.command`. If macOS blocks it the first time,
-   Control-click the file, choose **Open**, then choose **Open** again.
-3. Follow the prompts in Terminal.
+The installed app includes its own runtime. End users do not need Node.js,
+pnpm, Terminal, or this source repository.
 
-The setup will explain how to share the sheet as read-only, ask for its Google
-Sheets URL, install the project dependencies, start the local server, and open
-the dashboard in your browser. You need Node.js 22.13 or newer; download it from
-[nodejs.org](https://nodejs.org/) if the setup asks you to.
+## Connect a Practice Log
 
-### Manual setup
+During first-run setup, the app explains how to make the Google Sheet readable:
 
-Clone or download the repo, then copy `.env.example` to `.env.local`. Paste the
-full Google Sheets sharing URL into `GOOGLE_SHEET_URL`:
+1. Open the Mark Walker Practice Log in Google Sheets.
+2. Click **Share**.
+3. Under **General access**, choose **Anyone with the link**.
+4. Keep the role set to **Viewer**.
+5. Click **Copy link** and paste it into Practice Activity.
 
-```dotenv
-GOOGLE_SHEET_URL="https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit#gid=0"
-```
+The app tests the URL and sheet layout before saving it.
 
-In Google Sheets, select **Share**, set **General access** to **Anyone with the
-link**, and set the role to **Viewer**. This is read-only access, but anyone with
-the link can view the sheet's contents, including column C.
+Anyone with the link can view the sheet, including practiced items in column C.
+Viewer access does not allow them to edit it. Some managed Google Workspace
+accounts may prevent link sharing.
 
-Then run:
-
-```bash
-pnpm install
-pnpm dev
-```
-
-Open [http://localhost:3000](http://localhost:3000). The dashboard reads the
-sheet immediately and refreshes it once per minute.
+Use **Change Practice Log** in the app to connect a different sheet. Settings and
+the most recent successful response are stored in the current macOS user's
+Application Support directory. Cached data is associated with its exact sheet
+URL so data from a previous sheet is never used for a new one.
 
 ## Development
 
-Requires Node.js 22.13 or newer.
+Requires Node.js 22.13 or newer and pnpm.
 
 ```bash
 pnpm install
 pnpm dev
-pnpm test
-pnpm lint
-pnpm typecheck
-pnpm build
 ```
 
-The dashboard source lives in `app/`. The Google Sheets endpoint is
-`app/api/practice/route.ts`. The included `.openai/hosting.json` belongs to the
-original deployment, so configure your own host when publishing a fork.
+The development command opens the Electron application with Vite hot reload.
+
+Quality checks:
+
+```bash
+pnpm test
+pnpm typecheck
+pnpm lint
+pnpm package
+```
+
+## Build the macOS installer
+
+Build a universal unsigned DMG and ZIP on a Mac:
+
+```bash
+pnpm make:mac
+```
+
+Artifacts are written under `out/make/`. DMG generation must run on macOS.
+
+For a faster architecture-specific local build:
+
+```bash
+pnpm make
+```
+
+## Architecture
+
+- `electron/main.ts`: application window, IPC validation, and external links
+- `electron/preload.ts`: narrow, context-isolated renderer API
+- `electron/practice-service.ts`: sheet validation, refresh, and fallback logic
+- `electron/settings-store.ts`: local settings and per-sheet cache
+- `app/setup-wizard.tsx`: first-run sharing and URL setup
+- `app/activity-dashboard.tsx`: live dashboard UI
+- `app/practice-sheet.ts`: Google GViz parsing and Practice Log validation
+- `app/practice-metrics.ts`: 365-day statistics
+
+The renderer is sandboxed with Node integration disabled. Google Sheets requests
+run in the Electron main process, and the renderer cannot access the filesystem
+or arbitrary Electron APIs.

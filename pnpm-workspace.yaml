@@ -1,4 +1,10 @@
+nodeLinker: hoisted
+blockExoticSubdeps: false
+
 allowBuilds:
-  esbuild: set this to true or false
-  sharp: set this to true or false
-  workerd: set this to true or false
+  electron: true
+  esbuild: true
+  fs-xattr: true
+  macos-alias: true
+  sharp: false
+  workerd: false
