@@ -2,10 +2,10 @@
 
 ## ⬇️ Download the macOS installer
 
-[**Download Practice Activity for macOS →**](https://github.com/travishuff/practice-activity-dashboard/releases/latest)
+[**Download Practice Activity v0.1.0 for macOS (.dmg) →**](https://github.com/travishuff/practice-activity-dashboard/releases/download/v0.1.0/Practice-Activity-v0.1.0-macOS-universal.dmg)
 
-The Releases page contains the universal `.dmg` installer for both Apple Silicon
-and Intel Macs.
+This universal installer works on both Apple Silicon and Intel Macs. You can
+also [view all releases](https://github.com/travishuff/practice-activity-dashboard/releases).
 
 Practice Activity is a macOS desktop dashboard for the Mark Walker Practice Log.
 It reads the existing Google Sheets layout and displays a live 365-day practice
@@ -85,6 +85,26 @@ For a faster architecture-specific local build:
 ```bash
 pnpm make
 ```
+
+## Release versioning
+
+Every newly published DMG is a release. Releases use [Semantic Versioning](https://semver.org/)
+from `package.json` and matching Git tags such as `v0.1.0`:
+
+- patch (`0.1.1`) for fixes that do not change expected behavior
+- minor (`0.2.0`) for new backward-compatible features
+- major (`1.0.0`) for incompatible changes; `1.0.0` also marks the first stable release
+
+After setting the version in `package.json`, build the publishable artifacts with:
+
+```bash
+pnpm release:mac
+```
+
+This produces a versioned universal DMG and SHA-256 checksum under
+`out/release/v<version>/`. The release is published with the matching
+`v<version>` Git tag and both files are uploaded to GitHub Releases. Release
+artifacts under `out/` are generated files and are not committed to Git.
 
 ## Architecture
 
