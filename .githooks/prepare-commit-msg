@@ -1,0 +1,10 @@
+#!/bin/sh
+
+set -eu
+
+message_file=$1
+trailer="Co-authored-by: Codex <codex@openai.com>"
+
+if ! grep -Fqi "$trailer" "$message_file"; then
+  printf '\n%s\n' "$trailer" >> "$message_file"
+fi
