@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 import path from "node:path";
+import { MAX_USER_NAME_LENGTH, normalizeUserName } from "../app/user-name";
 import {
   configurePracticeLog,
   getPracticeData,
@@ -21,7 +22,7 @@ function registerIpcHandlers() {
     return getSetupStatus();
   });
 
-  ipcMain.handle("practice:configure", (event, sheetUrl: unknown) => {
+  ipcMain.handle("practice:configure", (event, sheetUrl: unknown, userName: unknown) => {
     requireTrustedSender(event);
     if (typeof sheetUrl !== "string" || sheetUrl.length > 2_048) {
       return {
@@ -32,7 +33,31 @@ function registerIpcHandlers() {
         },
       };
     }
-    return configurePracticeLog(sheetUrl);
+
+    if (userName !== undefined && typeof userName !== "string") {
+      return {
+        ok: false,
+        error: {
+          code: "invalid_name",
+          message: "Enter a valid name or leave the name field blank",
+        },
+      };
+    }
+
+    const normalizedUserName = typeof userName === "string"
+      ? normalizeUserName(userName)
+      : null;
+    if (normalizedUserName && normalizedUserName.length > MAX_USER_NAME_LENGTH) {
+      return {
+        ok: false,
+        error: {
+          code: "invalid_name",
+          message: `Name must be ${MAX_USER_NAME_LENGTH} characters or fewer`,
+        },
+      };
+    }
+
+    return configurePracticeLog(sheetUrl, normalizedUserName);
   });
 
   ipcMain.handle("practice:get-data", event => {
