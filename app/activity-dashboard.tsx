@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { PracticeDay } from "./practice-data";
 import { summarizePracticePeriod } from "./practice-metrics";
 import type { PracticePayload } from "./practice-sheet";
+import { practiceActivityTitle } from "./user-name";
 
 const DAY = 86_400_000;
 
@@ -24,14 +25,21 @@ function RangeChart({ values, format, labels }: { values: [number, number, numbe
 
 export default function ActivityDashboard({
   initialPayload,
+  userName,
   onChangeSheet,
 }: {
   initialPayload: PracticePayload;
+  userName: string | null;
   onChangeSheet: () => void | Promise<void>;
 }) {
   const [payload, setPayload] = useState<PracticePayload>(initialPayload);
   const [selected, setSelected] = useState<(PracticeDay & { occurred: boolean }) | null>(null);
   const [popover, setPopover] = useState<{ date: string; state: string; items: string[]; x: number; y: number } | null>(null);
+  const appTitle = practiceActivityTitle(userName);
+
+  useEffect(() => {
+    document.title = appTitle;
+  }, [appTitle]);
 
   useEffect(() => {
     let controller: AbortController | null = null;
@@ -98,7 +106,10 @@ export default function ActivityDashboard({
   return (
     <main className="shell">
       <header className="topbar">
-        <a className="brand" href="#activity" aria-label="Practice activity home"><span>PA</span> Practice Activity</a>
+        <a className="brand" href="#activity" aria-label={`${appTitle} home`}>
+          <span className="brand-mark" aria-hidden="true">PA</span>
+          <span className="brand-title" title={appTitle}>{appTitle}</span>
+        </a>
         <button className="settings-button" type="button" onClick={() => void onChangeSheet()}>
           Change Practice Log
         </button>

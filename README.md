@@ -2,7 +2,7 @@
 
 ## ⬇️ Download the macOS installer
 
-[**Download Practice Activity v0.1.0 for macOS (.dmg) →**](https://github.com/travishuff/practice-activity-dashboard/releases/download/v0.1.0/Practice-Activity-v0.1.0-macOS-universal.dmg)
+[**Download Practice Activity v0.2.0 for macOS (.dmg) →**](https://github.com/travishuff/practice-activity-dashboard/releases/download/v0.2.0/Practice-Activity-v0.2.0-macOS-universal.dmg)
 
 This universal installer works on both Apple Silicon and Intel Macs. You can
 also [view all releases](https://github.com/travishuff/practice-activity-dashboard/releases).
@@ -40,6 +40,8 @@ During first-run setup, the app explains how to make the Google Sheet readable:
 5. Click **Copy link** and paste it into Practice Activity.
 
 The app tests the URL and sheet layout before saving it.
+You can also enter your name during setup to display it in the app heading; the
+field is optional and a blank value keeps the heading as **Practice Activity**.
 
 Anyone with the link can view the sheet, including practiced items in column C.
 Viewer access does not allow them to edit it. Some managed Google Workspace

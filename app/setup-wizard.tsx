@@ -1,22 +1,26 @@
 import { useState, type FormEvent } from "react";
 import type { PracticePayload } from "./practice-sheet";
+import { MAX_USER_NAME_LENGTH, normalizeUserName } from "./user-name";
 
 type SetupWizardProps = {
   initialUrl?: string;
+  initialUserName?: string | null;
   initialError?: string | null;
   canCancel?: boolean;
   onCancel?: () => void;
-  onComplete(payload: PracticePayload): void;
+  onComplete(payload: PracticePayload, userName: string | null): void;
 };
 
 export default function SetupWizard({
   initialUrl = "",
+  initialUserName = "",
   initialError = null,
   canCancel = false,
   onCancel,
   onComplete,
 }: SetupWizardProps) {
   const [sheetUrl, setSheetUrl] = useState(initialUrl);
+  const [userName, setUserName] = useState(initialUserName ?? "");
   const [error, setError] = useState<string | null>(initialError);
   const [connecting, setConnecting] = useState(false);
 
@@ -26,9 +30,9 @@ export default function SetupWizard({
     setConnecting(true);
 
     try {
-      const result = await window.practiceAPI.configurePracticeLog(sheetUrl);
+      const result = await window.practiceAPI.configurePracticeLog(sheetUrl, userName);
       if (result.ok) {
-        onComplete(result.payload);
+        onComplete(result.payload, normalizeUserName(userName));
       } else {
         setError(result.error.message);
       }
@@ -80,21 +84,40 @@ export default function SetupWizard({
         </button>
 
         <form className="setup-form" onSubmit={submit}>
-          <label htmlFor="sheet-url">Google Sheets URL</label>
-          <input
-            id="sheet-url"
-            name="sheet-url"
-            type="url"
-            required
-            autoComplete="off"
-            placeholder="https://docs.google.com/spreadsheets/d/…"
-            value={sheetUrl}
-            onChange={event => setSheetUrl(event.target.value)}
-            aria-describedby={error ? "setup-error" : "sheet-hint"}
-          />
-          <small id="sheet-hint">
-            Open the correct worksheet tab before copying its URL.
-          </small>
+          <div className="setup-field">
+            <label htmlFor="user-name">Your name <span>(optional)</span></label>
+            <input
+              id="user-name"
+              name="user-name"
+              type="text"
+              autoComplete="name"
+              maxLength={MAX_USER_NAME_LENGTH}
+              placeholder="Travis Huff"
+              value={userName}
+              onChange={event => setUserName(event.target.value)}
+              aria-describedby="name-hint"
+            />
+            <small id="name-hint">
+              If provided, your name appears in the Practice Activity heading.
+            </small>
+          </div>
+          <div className="setup-field">
+            <label htmlFor="sheet-url">Google Sheets URL</label>
+            <input
+              id="sheet-url"
+              name="sheet-url"
+              type="url"
+              required
+              autoComplete="off"
+              placeholder="https://docs.google.com/spreadsheets/d/…"
+              value={sheetUrl}
+              onChange={event => setSheetUrl(event.target.value)}
+              aria-describedby={error ? "setup-error" : "sheet-hint"}
+            />
+            <small id="sheet-hint">
+              Open the correct worksheet tab before copying its URL.
+            </small>
+          </div>
           {error && <p className="setup-error" id="setup-error" role="alert">{error}</p>}
           <div className="setup-actions">
             {canCancel && (

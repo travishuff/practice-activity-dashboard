@@ -175,6 +175,15 @@ button:disabled {
   font-weight: 700;
 }
 
+.setup-form label span {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.setup-field + .setup-field {
+  margin-top: 18px;
+}
+
 .setup-form input {
   width: 100%;
   padding: 13px 14px;
@@ -238,6 +247,7 @@ button:disabled {
 }
 
 .settings-button {
+  flex: 0 0 auto;
   margin-left: auto;
 }
 
@@ -258,14 +268,16 @@ button:disabled {
 .brand {
   display: flex;
   align-items: center;
+  min-width: 0;
   gap: 12px;
   color: var(--ink);
   font-weight: 700;
   text-decoration: none;
 }
 
-.brand span {
+.brand-mark {
   display: grid;
+  flex: 0 0 auto;
   place-items: center;
   width: 34px;
   height: 34px;
@@ -273,6 +285,12 @@ button:disabled {
   background: var(--accent);
   color: #fff;
   font-size: 12px;
+}
+
+.brand-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sync {

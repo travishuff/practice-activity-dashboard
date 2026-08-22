@@ -40,15 +40,19 @@ export async function getSetupStatus(): Promise<SetupStatus> {
   return {
     configured: Boolean(settings),
     sheetUrl: settings?.sheetUrl ?? null,
+    userName: settings?.userName ?? null,
   };
 }
 
-export async function configurePracticeLog(sheetUrl: string): Promise<PracticeResult> {
+export async function configurePracticeLog(
+  sheetUrl: string,
+  userName: string | null,
+): Promise<PracticeResult> {
   const normalizedUrl = sheetUrl.trim();
 
   try {
     const payload = await fetchSheet(normalizedUrl);
-    await writeSettings({ sheetUrl: normalizedUrl });
+    await writeSettings({ sheetUrl: normalizedUrl, userName });
     await writeCache(normalizedUrl, payload);
     return { ok: true, payload };
   } catch (error) {

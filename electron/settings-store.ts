@@ -3,9 +3,11 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { isPracticePayload } from "../app/electron-api";
 import type { PracticePayload } from "../app/practice-sheet";
+import { normalizeUserName } from "../app/user-name";
 
 type Settings = {
   sheetUrl: string;
+  userName: string | null;
 };
 
 type CacheFile = {
@@ -39,8 +41,15 @@ async function writeJson(filename: string, value: unknown) {
 export async function readSettings(): Promise<Settings | null> {
   const value = await readJson("settings.json");
   if (!value || typeof value !== "object") return null;
-  const sheetUrl = (value as Partial<Settings>).sheetUrl;
-  return typeof sheetUrl === "string" && sheetUrl.length > 0 ? { sheetUrl } : null;
+  const settings = value as Partial<Settings>;
+  const sheetUrl = settings.sheetUrl;
+  if (typeof sheetUrl !== "string" || sheetUrl.length === 0) return null;
+  return {
+    sheetUrl,
+    userName: typeof settings.userName === "string"
+      ? normalizeUserName(settings.userName)
+      : null,
+  };
 }
 
 export async function writeSettings(settings: Settings) {

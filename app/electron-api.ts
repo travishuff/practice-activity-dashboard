@@ -7,11 +7,12 @@ export type PracticeResult =
 export type SetupStatus = {
   configured: boolean;
   sheetUrl: string | null;
+  userName: string | null;
 };
 
 export interface PracticeAPI {
   getSetupStatus(): Promise<SetupStatus>;
-  configurePracticeLog(sheetUrl: string): Promise<PracticeResult>;
+  configurePracticeLog(sheetUrl: string, userName?: string): Promise<PracticeResult>;
   getPracticeData(): Promise<PracticeResult>;
   openSharingHelp(): Promise<void>;
 }
