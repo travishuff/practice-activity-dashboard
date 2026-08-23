@@ -609,7 +609,7 @@ button:disabled {
 .range-values,
 .range-labels {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(var(--points, 3), 1fr);
   align-items: end;
 }
 
@@ -618,8 +618,8 @@ button:disabled {
   letter-spacing: -0.04em;
 }
 
-.range-values b:nth-child(2),
-.range-labels small:nth-child(2) {
+.range-values b:nth-child(2):not(:last-child),
+.range-labels small:nth-child(2):not(:last-child) {
   text-align: center;
 }
 
@@ -655,10 +655,22 @@ button:disabled {
   background: #fff;
 }
 
-.range-line i:nth-child(2) {
+.range-line i:nth-child(2):not(:last-child) {
   width: 13px;
   height: 13px;
   background: var(--accent);
+}
+
+.range-note {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.range-note b {
+  color: var(--ink);
+  font-weight: 700;
 }
 
 .range-labels small {

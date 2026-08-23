@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A new push to a branch supersedes any run still in flight for it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: lint · typecheck · test (node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      # Report both legs; a failure on one version is useful information about
+      # the other, not a reason to cancel it.
+      fail-fast: false
+      matrix:
+        # 22 is the floor declared in package.json "engines"; 24 is what the
+        # app is developed against. Both must stay green.
+        node-version: [22, 24]
+
+    env:
+      # The gates below need Electron's TypeScript definitions, which ship in
+      # the npm package, but not its ~100 MB platform binary.
+      ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Must precede setup-node so its pnpm cache lookup can find the binary.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Run as separate steps rather than one chained command so a failure
+      # names the gate that broke it in the job summary.
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test

@@ -36,9 +36,14 @@ export function isPracticePayload(value: unknown): value is PracticePayload {
         && day.items.every(item => typeof item === "string")
       ))
     ))
+    && (
+      candidate.periodStart === null
+      || candidate.periodStart === undefined
+      || typeof candidate.periodStart === "string"
+    )
     && Number.isFinite(candidate.totalHours)
     && typeof candidate.live === "boolean"
-    && (candidate.checkedAt === null || typeof candidate.checkedAt === "string")
+    && typeof candidate.checkedAt === "string"
     && validError
     && Array.isArray(candidate.warnings)
     && candidate.warnings.every(warning => typeof warning === "string");
