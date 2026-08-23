@@ -200,20 +200,39 @@ body {
   min-width: 840px;
   display: grid;
   grid-template-columns: 42px 1fr;
-  grid-template-rows: 24px auto;
+  grid-template-rows: 42px auto;
   gap: 8px;
 }
 
-.month-labels {
+.calendar-labels {
   grid-column: 2;
   display: grid;
   grid-template-columns: repeat(var(--weeks), 1fr);
-  color: var(--muted);
+  grid-template-rows: 18px 24px;
+  position: relative;
   font-size: 12px;
 }
 
-.month-labels span {
+.year-label {
+  grid-row: 1;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.month-label {
+  grid-row: 2;
+  align-self: end;
+  color: var(--muted);
   white-space: nowrap;
+}
+
+.year-separator {
+  grid-row: 1;
+  align-self: center;
+  height: 0;
+  margin: 0 8px 6px 36px;
+  border-top: 1px solid #b8c0ba;
 }
 
 .day-labels {
