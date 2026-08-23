@@ -68,6 +68,32 @@ pnpm dev
 
 The development command opens the Electron application with Vite hot reload.
 
+### Choosing a Practice Log in development
+
+`pnpm dev` keeps its settings and cache in a separate `Practice Activity-dev`
+directory, so working on the app never touches the installed app's saved
+Practice Log.
+
+To point development at a particular sheet, copy the example file and fill it
+in:
+
+```bash
+cp .env.example .env.local
+```
+
+`.env.local` is git-ignored. To use a different sheet for a single run without
+editing it, set the variable inline:
+
+```bash
+PRACTICE_SHEET_URL="https://docs.google.com/spreadsheets/d/other/edit" pnpm dev
+```
+
+The environment variable wins over `.env.local`, which wins over whatever the
+dev setup wizard last saved. While an override is set it applies for the whole
+run, so **Change Practice Log** still writes to dev settings but the override
+is what loads; unset it to exercise the first-run setup wizard. A packaged app
+ignores all of this.
+
 Quality checks:
 
 ```bash

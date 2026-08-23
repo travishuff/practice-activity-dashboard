@@ -5,6 +5,7 @@ import {
   PracticeSheetError,
 } from "../app/practice-sheet";
 import type { PracticePayload } from "../app/practice-sheet";
+import { devSheetUrl } from "./dev-environment";
 import {
   readCache,
   readSettings,
@@ -30,13 +31,25 @@ function errorResult(error: unknown): Extract<PracticeResult, { ok: false }> {
   };
 }
 
+/**
+ * Saved settings, with the dev Practice Log layered on top when one is
+ * configured. The override wins for the whole run, so "Change Practice Log"
+ * still writes to dev settings but does not take effect while it is set.
+ */
+async function resolveSettings() {
+  const settings = await readSettings();
+  const devUrl = devSheetUrl();
+  if (!devUrl) return settings;
+  return { sheetUrl: devUrl, userName: settings?.userName ?? null };
+}
+
 async function fetchSheet(sheetUrl: string) {
   const feedUrl = buildSheetDataFeed(sheetUrl);
   return fetchPracticePayload(fetch, feedUrl);
 }
 
 export async function getSetupStatus(): Promise<SetupStatus> {
-  const settings = await readSettings();
+  const settings = await resolveSettings();
   return {
     configured: Boolean(settings),
     sheetUrl: settings?.sheetUrl ?? null,
@@ -61,7 +74,7 @@ export async function configurePracticeLog(
 }
 
 export async function getPracticeData(): Promise<PracticeResult> {
-  const settings = await readSettings();
+  const settings = await resolveSettings();
   if (!settings) {
     return {
       ok: false,

@@ -6,23 +6,36 @@ import reactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
+/**
+ * Renderer code only. The React rule sets are scoped to these rather than
+ * applied repo-wide, because react-hooks/rules-of-hooks treats any `use…`
+ * function as a hook: a main-process helper named useSomething is a lint
+ * error, in a file React never loads.
+ */
+const REACT_FILES = ["app/**/*.ts", "app/**/*.tsx", "renderer.tsx"];
+
 export default defineConfig([
   globalIgnores([".next/**", ".vite/**", "dist/**", "out/**", "node_modules/**"]),
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
-  react.configs.flat.recommended,
-  react.configs.flat["jsx-runtime"],
-  reactHooks.configs.flat["recommended-latest"],
-  jsxA11y.flatConfigs.recommended,
+  {
+    files: REACT_FILES,
+    extends: [
+      react.configs.flat.recommended,
+      react.configs.flat["jsx-runtime"],
+      reactHooks.configs.flat["recommended-latest"],
+      jsxA11y.flatConfigs.recommended,
+    ],
+    settings: {
+      react: { version: "detect" },
+    },
+  },
   {
     languageOptions: {
       globals: {
         ...globals.browser,
         ...globals.node,
       },
-    },
-    settings: {
-      react: { version: "detect" },
     },
   },
   {

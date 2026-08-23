@@ -117,8 +117,33 @@ In [`app/practice-sheet.ts`](app/practice-sheet.ts):
   `data`** — those diverge whenever leading days are skipped. The fallback to
   the earliest date exists only for payloads cached before the field existed.
 
+## Development environment
+
+`pnpm dev` runs unpackaged, which `app.isPackaged` detects. Two things follow
+from that, both in [`electron/dev-environment.ts`](electron/dev-environment.ts)
+and both inert in a packaged app:
+
+- **userData is redirected** to `Practice Activity-dev`, so development cannot
+  overwrite the installed app's settings or cache. This runs at module scope in
+  `main.ts` because Electron resolves userData before `whenReady`.
+- **The Practice Log can be overridden**, by `PRACTICE_SHEET_URL` in the
+  environment or in `.env.local` / `.env`, in that precedence order. When set it
+  wins for the whole run: `configurePracticeLog` still writes, but
+  `resolveSettings` layers the override on top of what it wrote.
+
+The selection logic lives in [`electron/dev-sheet.ts`](electron/dev-sheet.ts),
+which imports nothing from `electron` so it can be unit tested in plain Node.
+Keep it that way; the electron-facing wrapper is what holds the `isPackaged`
+gate and the filesystem reads.
+
 ## Conventions
 
+- **The React rule sets are scoped to renderer files**, `app/**` and
+  `renderer.tsx`, in [`eslint.config.mjs`](eslint.config.mjs). Applied
+  repo-wide, `react-hooks/rules-of-hooks` treats any `use…` function as a hook,
+  so a main-process helper named `useSomething` failed lint in a file React
+  never loads. Add new renderer directories to `REACT_FILES`, and expect no
+  React linting outside them.
 - **Relative value imports between app modules need an explicit `.ts`
   extension.** Tests run under `node --experimental-strip-types`, which does not
   do extensionless resolution. `import type` is erased before the resolver runs,
