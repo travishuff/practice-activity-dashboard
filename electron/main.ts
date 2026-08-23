@@ -2,6 +2,11 @@ import { app, BrowserWindow, ipcMain, shell } from "electron";
 import path from "node:path";
 import { MAX_USER_NAME_LENGTH, normalizeUserName } from "../app/user-name";
 import {
+  devSheetUrl,
+  isDevEnvironment,
+  applyDevUserDataDirectory,
+} from "./dev-environment";
+import {
   configurePracticeLog,
   getPracticeData,
   getSetupStatus,
@@ -9,6 +14,21 @@ import {
 
 const SHARING_HELP_URL = "https://support.google.com/drive/answer/2494822";
 let mainWindow: BrowserWindow | null = null;
+
+// Before anything resolves userData, so dev never touches the installed app's
+// settings or cache.
+applyDevUserDataDirectory();
+
+function announceDevEnvironment() {
+  if (!isDevEnvironment()) return;
+  const sheetUrl = devSheetUrl();
+  console.log(`[dev] settings directory: ${app.getPath("userData")}`);
+  console.log(
+    sheetUrl
+      ? `[dev] Practice Log override: ${sheetUrl}`
+      : "[dev] no Practice Log override; using saved dev settings",
+  );
+}
 
 function requireTrustedSender(event: Electron.IpcMainInvokeEvent) {
   if (!mainWindow || event.sender !== mainWindow.webContents) {
@@ -104,6 +124,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  announceDevEnvironment();
   registerIpcHandlers();
   createWindow();
 
