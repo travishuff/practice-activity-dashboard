@@ -10,6 +10,8 @@ export type PracticeDataErrorCode =
 
 export type PracticePayload = {
   data: PracticeDay[];
+  /** Day 1 of the Practice Log, derived from the sheet's own day numbering. */
+  periodStart: string | null;
   totalHours: number;
   live: boolean;
   checkedAt: string | null;
@@ -154,7 +156,11 @@ export function parsePracticeDays(rows: SheetRow[]) {
     data.push({ date: resolvedDate, minutes, items });
   }
 
-  return { data, warnings };
+  return {
+    data,
+    warnings,
+    periodStart: new Date(periodStart).toISOString().slice(0, 10),
+  };
 }
 
 export function calculateTotalHours(data: PracticeDay[]) {
@@ -213,9 +219,10 @@ export async function fetchPracticePayload(
     }
 
     const dataRows = parseGvizRows(responseText);
-    const { data, warnings } = parsePracticeDays(dataRows);
+    const { data, warnings, periodStart } = parsePracticeDays(dataRows);
     return {
       data,
+      periodStart,
       totalHours: calculateTotalHours(data),
       live: true,
       checkedAt: new Date().toISOString(),
@@ -240,6 +247,7 @@ export function createFallbackPayload(
     : new PracticeSheetError("source_unavailable", "The live sheet is temporarily unavailable");
   return {
     data,
+    periodStart: null,
     totalHours,
     live: false,
     checkedAt: null,

@@ -61,7 +61,9 @@ export async function readCache(sheetUrl: string): Promise<PracticePayload | nul
   if (!value || typeof value !== "object") return null;
   const cache = value as Partial<CacheFile>;
   if (cache.sheetUrl !== sheetUrl || !isPracticePayload(cache.payload)) return null;
-  return cache.payload;
+  // Caches written before periodStart existed omit it entirely; normalize so
+  // the renderer always sees the documented shape.
+  return { ...cache.payload, periodStart: cache.payload.periodStart ?? null };
 }
 
 export async function writeCache(sheetUrl: string, payload: PracticePayload) {

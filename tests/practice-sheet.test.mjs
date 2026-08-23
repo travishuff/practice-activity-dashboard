@@ -47,6 +47,7 @@ test("a blank column-B cell with no practice remains a future day", () => {
       { date: "2025-09-08", minutes: 0, items: [] },
     ],
     warnings: [],
+    periodStart: "2025-09-07",
   });
 });
 
@@ -60,6 +61,7 @@ test("undated practice is retained with an explicit source warning", () => {
       { date: "2025-09-09", minutes: 45, items: ["Future practice"] },
     ],
     warnings: ["Day 3 has practice time but no date; using 2025-09-09"],
+    periodStart: "2025-09-07",
   });
 });
 
@@ -74,6 +76,7 @@ test("the live payload calculates total hours from daily minutes", async () => {
     "https://example.test/sheet?range=A:E",
   );
   assert.equal(payload.live, true);
+  assert.equal(payload.periodStart, "2025-09-07");
   assert.equal(payload.totalHours, 1.5);
   assert.equal(payload.error, null);
   assert.deepEqual(payload.warnings, []);
@@ -111,6 +114,7 @@ test("fallback responses expose a degraded state instead of claiming success", (
   const fallback = createFallbackPayload(error, [{ date: "2025-09-07", minutes: 90 }], 1.5);
   assert.deepEqual(fallback, {
     data: [{ date: "2025-09-07", minutes: 90 }],
+    periodStart: null,
     totalHours: 1.5,
     live: false,
     checkedAt: null,
