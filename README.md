@@ -57,9 +57,33 @@ URL so data from a previous sheet is never used for a new one.
 Use **Refresh** above the heatmap whenever you want to load the latest changes
 from Google Sheets. The dashboard does not refresh automatically.
 
+## What the dashboard shows
+
+The Practice Log covers a 365-day period beginning at day 1 of the sheet. Every
+day in that period falls into exactly one of three counts, decided by the
+calendar rather than by whether the sheet has a row for it:
+
+- **Practice days** — day 1 through today, where practice time is above zero.
+- **Days off** — day 1 through today, where practice time is zero. A day left
+  blank, or with no row at all, counts here.
+- **Remaining** — tomorrow through day 365.
+
+The three always add up to 365.
+
+**Daily practice range** shows the shortest and longest of your practice days,
+and states the average separately because the two are measured over different
+sets: the average spans every day since you started, including days off, so it
+usually sits below the shortest practice day. The card spells out both
+denominators.
+
+Today counts as a day off until you log practice, so the average dips each
+morning and recovers when the sheet is updated.
+
 ## Development
 
-Requires Node.js 22.13 or newer and pnpm.
+Requires Node.js 22.13 or newer. The pnpm version is pinned in `package.json`
+under `packageManager`; `corepack` will honour it automatically, and CI uses the
+same value.
 
 ```bash
 pnpm install
@@ -145,15 +169,35 @@ artifacts under `out/` are generated files and are not committed to Git.
 
 ## Architecture
 
+Main process — Node, full privileges:
+
 - `electron/main.ts`: application window, IPC validation, and external links
 - `electron/preload.ts`: narrow, context-isolated renderer API
-- `electron/practice-service.ts`: sheet validation, refresh, and fallback logic
+- `electron/practice-service.ts`: sheet refresh and cached-snapshot fallback
 - `electron/settings-store.ts`: local settings and per-sheet cache
+- `electron/dev-environment.ts`: development-only data directory and sheet
+  override, inert in a packaged app
+- `electron/dev-sheet.ts`: which Practice Log development should open
+
+Renderer — sandboxed:
+
+- `app/app.tsx`: top-level view state, from loading through setup to dashboard
 - `app/setup-wizard.tsx`: first-run sharing and URL setup
-- `app/activity-dashboard.tsx`: dashboard UI and manual refresh behavior
+- `app/activity-dashboard.tsx`: dashboard UI, manual refresh, midnight rollover
+- `app/practice-metrics.ts`: the 365-day period statistics described above
+- `app/calendar-date.ts`: time-zone-free calendar dates, plus today's local date
+- `app/refresh-status.ts`: how the footer describes data freshness
+
+Shared by both:
+
 - `app/practice-sheet.ts`: Google GViz parsing and Practice Log validation
-- `app/practice-metrics.ts`: 365-day statistics
+- `app/electron-api.ts`: the typed IPC contract and payload validation
+- `app/practice-data.ts`: the practice-day shape and the period length
+- `app/user-name.ts`: name normalization and the window title
 
 The renderer is sandboxed with Node integration disabled. Google Sheets requests
 run in the Electron main process, and the renderer cannot access the filesystem
 or arbitrary Electron APIs.
+
+Contributor notes, including the exact period formulas and the invariants the
+code relies on, are in [AGENTS.md](AGENTS.md).

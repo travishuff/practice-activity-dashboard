@@ -182,5 +182,11 @@ gate and the filesystem reads.
 
 ## Known open issues
 
-None outstanding from the review that produced this file. Add new findings
-here rather than letting them live only in a pull request description.
+Add new findings here rather than letting them live only in a pull request
+description.
+
+1. **`vite.main.config.ts` and `vite.preload.config.ts` are byte-identical.**
+   Both only mark `electron` external. `forge.config.cjs` could point both
+   builds at a single file.
+
+Everything raised by the review that produced this file has been resolved.
