@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { snapshot, snapshotTotalHours } from "../app/practice-data.ts";
+import { snapshot, snapshotPeriodStart, snapshotTotalHours } from "../app/practice-data.ts";
 import { summarizePracticePeriod } from "../app/practice-metrics.ts";
 
 test("snapshot has one value for every occurred source date", () => {
@@ -24,20 +24,26 @@ test("corrected source dates retain their daily minutes", () => {
 });
 
 test("rolling summary uses exactly 365 calendar days", () => {
-  const summary = summarizePracticePeriod(snapshot);
+  const summary = summarizePracticePeriod(snapshot, {
+    periodStart: snapshotPeriodStart,
+    today: "2026-08-23",
+  });
   assert.equal(summary.days.length, 365);
-  assert.equal(summary.practiceDays + summary.daysOff + summary.futureDays, 365);
-  assert.equal(summary.occurredDays, 343);
-  assert.equal(summary.practiceDays, summary.days.filter(day => day.occurred && day.minutes > 0).length);
-  assert.equal(summary.daysOff, summary.days.filter(day => day.occurred && day.minutes === 0).length);
-  assert.equal(summary.futureDays, summary.days.filter(day => !day.occurred).length);
+  assert.equal(summary.practiceDays + summary.daysOff + summary.remainingDays, 365);
+  assert.equal(summary.elapsedDays, 351);
+  assert.equal(summary.practiceDays, summary.days.filter(day => day.elapsed && day.minutes > 0).length);
+  assert.equal(summary.daysOff, summary.days.filter(day => day.elapsed && day.minutes === 0).length);
+  assert.equal(summary.remainingDays, summary.days.filter(day => !day.elapsed).length);
   assert.equal(summary.daily.minimum, 15);
   assert.equal(summary.daily.maximum, 210);
-  assert.equal(Number((summary.daily.average / 60).toFixed(2)), 1.64);
+  assert.equal(summary.daily.average, 33_846 / 351);
 });
 
 test("streak summary reports shortest, average, and longest runs", () => {
-  const summary = summarizePracticePeriod(snapshot);
+  const summary = summarizePracticePeriod(snapshot, {
+    periodStart: snapshotPeriodStart,
+    today: "2026-08-23",
+  });
   assert.equal(summary.streaks.minimum, 1);
   assert.ok(summary.streaks.average >= summary.streaks.minimum);
   assert.ok(summary.streaks.average <= summary.streaks.maximum);

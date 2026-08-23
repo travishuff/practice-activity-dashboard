@@ -44,14 +44,16 @@ body {
 .brand {
   display: flex;
   align-items: center;
+  min-width: 0;
   gap: 12px;
   color: var(--ink);
   font-weight: 700;
   text-decoration: none;
 }
 
-.brand span {
+.brand-mark {
   display: grid;
+  flex: 0 0 auto;
   place-items: center;
   width: 34px;
   height: 34px;
@@ -59,6 +61,12 @@ body {
   background: var(--accent);
   color: #fff;
   font-size: 12px;
+}
+
+.brand-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .refresh-button {
@@ -377,7 +385,7 @@ body {
 .range-values,
 .range-labels {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(var(--points, 3), 1fr);
   align-items: end;
 }
 
@@ -386,8 +394,8 @@ body {
   letter-spacing: -0.04em;
 }
 
-.range-values b:nth-child(2),
-.range-labels small:nth-child(2) {
+.range-values b:nth-child(2):not(:last-child),
+.range-labels small:nth-child(2):not(:last-child) {
   text-align: center;
 }
 
@@ -423,10 +431,22 @@ body {
   background: #fff;
 }
 
-.range-line i:nth-child(2) {
+.range-line i:nth-child(2):not(:last-child) {
   width: 13px;
   height: 13px;
   background: var(--accent);
+}
+
+.range-note {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.range-note b {
+  color: var(--ink);
+  font-weight: 700;
 }
 
 .range-labels small {

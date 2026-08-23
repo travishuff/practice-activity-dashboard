@@ -1,15 +1,15 @@
-import type { PracticeDay } from "./practice-data";
+import { PRACTICE_PERIOD_DAYS, type PracticeDay } from "./practice-data.ts";
 
 export type SheetCell = { v?: unknown; f?: string } | null | undefined;
 export type SheetRow = { c?: SheetCell[] };
 export type PracticeDataErrorCode =
   | "source_unavailable"
   | "invalid_source"
-  | "reconciliation_failed"
   | "refresh_failed";
 
 export type PracticePayload = {
   data: PracticeDay[];
+  periodStart: string | null;
   totalHours: number;
   live: boolean;
   checkedAt: string | null;
@@ -35,6 +35,10 @@ function cellNumber(cell: SheetCell) {
   if (raw === null || raw === undefined || raw === "") return null;
   const value = Number(raw);
   return Number.isFinite(value) ? value : null;
+}
+
+function isDayNumber(value: number) {
+  return Number.isInteger(value) && value >= 1 && value <= PRACTICE_PERIOD_DAYS;
 }
 
 function cellText(cell: SheetCell) {
@@ -90,7 +94,7 @@ export function parsePracticeDays(rows: SheetRow[]) {
   const headers = rows.flatMap((row, index) => {
     const cells = row.c ?? [];
     const day = cellNumber(cells[0]);
-    if (day === null || !Number.isInteger(day) || day < 1 || day > 365) return [];
+    if (day === null || !isDayNumber(day)) return [];
     return [{ index, day, date: parseDate(cells[1]), rawDate: cellText(cells[1]) }];
   });
 
@@ -121,7 +125,12 @@ export function parsePracticeDays(rows: SheetRow[]) {
     let minutes = 0;
     const items: string[] = [];
     for (let index = header.index + 1; index < rows.length; index += 1) {
-      if (cellNumber(rows[index].c?.[0]) !== null) break;
+      const dayColumn = cellNumber(rows[index].c?.[0]);
+      if (dayColumn !== null) {
+        if (isDayNumber(dayColumn)) break;
+        warnings.push(`Day ${header.day}: ignored a row whose day column reads ${dayColumn}`);
+        continue;
+      }
       const value = cellNumber(rows[index].c?.[4]);
       if (value === null) continue;
       if (value < 0) {
@@ -154,29 +163,20 @@ export function parsePracticeDays(rows: SheetRow[]) {
     data.push({ date: resolvedDate, minutes, items });
   }
 
-  return { data, warnings };
+  return {
+    data,
+    warnings: [...new Set(warnings)],
+    periodStart: new Date(periodStart).toISOString().slice(0, 10),
+  };
 }
 
-export function parseSummaryHours(rows: SheetRow[]) {
-  const value = cellNumber(rows[0]?.c?.[0]);
-  if (value === null) {
-    throw new PracticeSheetError("invalid_source", "Cell G6 does not contain a numeric total");
-  }
-  return value;
-}
-
-export function reconcilePracticeData(data: PracticeDay[], summaryHours: number) {
-  const totalHours = data.reduce((sum, day) => sum + day.minutes, 0) / 60;
-  if (Number(totalHours.toFixed(2)) !== Number(summaryHours.toFixed(2))) {
-    throw new PracticeSheetError("reconciliation_failed", "Daily practice values do not match cell G6");
-  }
-  return totalHours;
+export function calculateTotalHours(data: PracticeDay[]) {
+  return data.reduce((sum, day) => sum + day.minutes, 0) / 60;
 }
 
 export async function fetchPracticePayload(
   fetcher: typeof fetch,
   dataUrl: string,
-  totalUrl: string,
   timeoutMs = 10_000,
 ): Promise<PracticePayload> {
   const controller = new AbortController();
@@ -188,23 +188,17 @@ export async function fetchPracticePayload(
       cache: "no-store",
       signal: controller.signal,
     };
-    const [dataResponse, totalResponse] = await Promise.all([
-      fetcher(dataUrl, options),
-      fetcher(totalUrl, options),
-    ]);
-    if (!dataResponse.ok || !totalResponse.ok) {
+    const dataResponse = await fetcher(dataUrl, options);
+    if (!dataResponse.ok) {
       throw new PracticeSheetError("source_unavailable", "The live sheet is temporarily unavailable");
     }
 
-    const [dataRows, totalRows] = await Promise.all([
-      dataResponse.text().then(parseGvizRows),
-      totalResponse.text().then(parseGvizRows),
-    ]);
-    const { data, warnings } = parsePracticeDays(dataRows);
-    const totalHours = reconcilePracticeData(data, parseSummaryHours(totalRows));
+    const dataRows = parseGvizRows(await dataResponse.text());
+    const { data, warnings, periodStart } = parsePracticeDays(dataRows);
     return {
       data,
-      totalHours,
+      periodStart,
+      totalHours: calculateTotalHours(data),
       live: true,
       checkedAt: new Date().toISOString(),
       error: null,
@@ -222,12 +216,14 @@ export function createFallbackPayload(
   error: unknown,
   data: PracticeDay[],
   totalHours: number,
+  periodStart: string | null,
 ): PracticePayload {
   const knownError = error instanceof PracticeSheetError
     ? error
     : new PracticeSheetError("source_unavailable", "The live sheet is temporarily unavailable");
   return {
     data,
+    periodStart,
     totalHours,
     live: false,
     checkedAt: null,

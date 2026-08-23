@@ -45,6 +45,7 @@ test("a blank column-B cell with no practice remains a future day", () => {
       { date: "2025-09-08", minutes: 0, items: [] },
     ],
     warnings: [],
+    periodStart: "2025-09-07",
   });
 });
 
@@ -58,47 +59,53 @@ test("undated practice is reconciled with an explicit source warning", () => {
       { date: "2025-09-09", minutes: 45, items: ["Future practice"] },
     ],
     warnings: ["Day 3 has practice time but no date; using 2025-09-09"],
+    periodStart: "2025-09-07",
   });
 });
 
-test("the live payload reconciles daily minutes against an exact G6 response", async () => {
+test("the live payload calculates total hours from daily minutes", async () => {
   const fetcher = async url => {
     if (url.endsWith("range=A:E")) return new Response(gviz(practiceRows));
-    if (url.endsWith("range=G6")) return new Response(gviz([row([1.5])]));
     return new Response(null, { status: 404 });
   };
 
   const payload = await fetchPracticePayload(
     fetcher,
     "https://example.test/sheet?range=A:E",
-    "https://example.test/sheet?range=G6",
   );
   assert.equal(payload.live, true);
+  assert.equal(payload.periodStart, "2025-09-07");
   assert.equal(payload.totalHours, 1.5);
   assert.equal(payload.error, null);
   assert.deepEqual(payload.warnings, []);
   assert.deepEqual(payload.data[0].items, ["Rudiments", "Grooves"]);
 });
 
-test("a G6 mismatch is classified as a reconciliation failure", async () => {
-  const fetcher = async url => new Response(
-    url.endsWith("range=G6") ? gviz([row([2])]) : gviz(practiceRows),
-  );
-  await assert.rejects(
-    fetchPracticePayload(
-      fetcher,
-      "https://example.test/sheet?range=A:E",
-      "https://example.test/sheet?range=G6",
-    ),
-    error => error instanceof PracticeSheetError && error.code === "reconciliation_failed",
-  );
+test("a stray number in the day column does not truncate the day", () => {
+  const rows = [
+    row([1, ["Date(2025,8,7)", "9-7-25"]]),
+    row([null, null, "Rudiments", null, 60]),
+    row([999, null, "TOTALS", null, 60]),
+    row([null, null, "Grooves", null, 45]),
+  ];
+  const parsed = parsePracticeDays(rows);
+  assert.equal(parsed.data[0].minutes, 105);
+  assert.deepEqual(parsed.warnings, [
+    "Day 1: ignored a row whose day column reads 999",
+  ]);
 });
 
 test("fallback responses expose a degraded state instead of claiming success", () => {
   const error = new PracticeSheetError("source_unavailable", "The live sheet is temporarily unavailable");
-  const fallback = createFallbackPayload(error, [{ date: "2025-09-07", minutes: 90 }], 1.5);
+  const fallback = createFallbackPayload(
+    error,
+    [{ date: "2025-09-07", minutes: 90 }],
+    1.5,
+    "2025-09-07",
+  );
   assert.deepEqual(fallback, {
     data: [{ date: "2025-09-07", minutes: 90 }],
+    periodStart: "2025-09-07",
     totalHours: 1.5,
     live: false,
     checkedAt: null,

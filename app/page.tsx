@@ -1,6 +1,12 @@
 import ActivityDashboard from "./activity-dashboard";
-import { snapshot, snapshotTotalHours } from "./practice-data";
+import { snapshot, snapshotPeriodStart, snapshotTotalHours } from "./practice-data";
 
 export default function Home() {
-  return <ActivityDashboard initial={snapshot} initialTotalHours={snapshotTotalHours} />;
+  return (
+    <ActivityDashboard
+      initial={snapshot}
+      initialPeriodStart={snapshotPeriodStart}
+      initialTotalHours={snapshotTotalHours}
+    />
+  );
 }
