@@ -1,15 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { PracticeDay } from "./practice-data";
+import {
+  calendarDate,
+  calendarDateKey,
+  DAY,
+  formatCalendarDate,
+} from "./calendar-date";
 import { summarizePracticePeriod } from "./practice-metrics";
 import type { PracticePayload } from "./practice-sheet";
 import { practiceActivityTitle } from "./user-name";
 
-const DAY = 86_400_000;
-
-function iso(date: Date) { return date.toISOString().slice(0, 10); }
-function localDate(value: string) { return new Date(`${value}T12:00:00`); }
 function level(minutes: number) { return minutes === 0 ? 0 : minutes < 60 ? 1 : minutes < 120 ? 2 : minutes < 180 ? 3 : 4; }
 function duration(minutes: number) { const rounded = Math.round(minutes); const h = Math.floor(rounded / 60); const m = rounded % 60; return h ? `${h}h${m ? ` ${m}m` : ""}` : `${m}m`; }
 
@@ -34,7 +35,7 @@ export default function ActivityDashboard({
 }) {
   const [payload, setPayload] = useState<PracticePayload>(initialPayload);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [selected, setSelected] = useState<(PracticeDay & { occurred: boolean }) | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [popover, setPopover] = useState<{ date: string; state: string; items: string[]; x: number; y: number } | null>(null);
   const appTitle = practiceActivityTitle(userName);
 
@@ -66,25 +67,28 @@ export default function ActivityDashboard({
   const view = useMemo(() => {
     const summary = summarizePracticePeriod(payload.data);
     const period = new Map(summary.days.map(day => [day.date, day]));
-    const periodStart = localDate(summary.days[0].date);
-    const periodEnd = localDate(summary.days[summary.days.length - 1].date);
+    const periodStart = calendarDate(summary.days[0].date);
+    const periodEnd = calendarDate(summary.days[summary.days.length - 1].date);
     const start = new Date(periodStart);
-    start.setDate(start.getDate() - start.getDay());
+    start.setUTCDate(start.getUTCDate() - start.getUTCDay());
     const cells: Array<{ date: string; minutes: number; items: string[]; inRange: boolean; occurred: boolean }> = [];
     for (let d = new Date(start); d <= periodEnd; d = new Date(d.getTime() + DAY)) {
-      const key = iso(d); const day = period.get(key); cells.push({ date: key, minutes: day?.minutes ?? 0, items: day?.items ?? [], inRange: Boolean(day), occurred: day?.occurred ?? false });
+      const key = calendarDateKey(d); const day = period.get(key); cells.push({ date: key, minutes: day?.minutes ?? 0, items: day?.items ?? [], inRange: Boolean(day), occurred: day?.occurred ?? false });
     }
-    while (cells.length % 7) { const d = new Date(localDate(cells[cells.length - 1].date).getTime() + DAY); cells.push({ date: iso(d), minutes: 0, items: [], inRange: false, occurred: false }); }
+    while (cells.length % 7) { const d = new Date(calendarDate(cells[cells.length - 1].date).getTime() + DAY); cells.push({ date: calendarDateKey(d), minutes: 0, items: [], inRange: false, occurred: false }); }
     const weeks = cells.length / 7;
     const months: Array<{ label: string; column: number }> = [];
     let previous = "";
     cells.forEach((cell, index) => {
       if (index % 7 !== 0) return;
-      const d = localDate(cell.date); const name = d.toLocaleString("en-US", { month: "short" });
+      const d = calendarDate(cell.date); const name = d.toLocaleString("en-US", { month: "short", timeZone: "UTC" });
       if (name !== previous) { months.push({ label: name, column: Math.floor(index / 7) + 1 }); previous = name; }
     });
     return { cells, weeks, months, summary };
   }, [payload.data]);
+  const selected = selectedDate
+    ? view.summary.days.find(day => day.date === selectedDate) ?? null
+    : null;
 
   const refreshLabel = isRefreshing
     ? "Refreshing…"
@@ -95,8 +99,10 @@ export default function ActivityDashboard({
         : "Refresh";
   const refreshTitle = payload.error?.message
     ?? (payload.warnings.length ? payload.warnings.join("\n") : "Refresh practice data from Google Sheets");
-  const snapshotDate = localDate(view.summary.days.filter(day => day.occurred).at(-1)?.date ?? view.summary.days[0].date)
-    .toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const snapshotDate = formatCalendarDate(
+    view.summary.days.filter(day => day.occurred).at(-1)?.date ?? view.summary.days[0].date,
+    { month: "short", day: "numeric", year: "numeric" },
+  );
 
   return (
     <main className="shell">
@@ -105,7 +111,7 @@ export default function ActivityDashboard({
           <span className="brand-mark" aria-hidden="true">PA</span>
           <span className="brand-title" title={appTitle}>{appTitle}</span>
         </a>
-        <button className="settings-button" type="button" onClick={() => void onChangeSheet()}>
+        <button className="settings-button" type="button" onClick={() => void onChangeSheet()} disabled={isRefreshing}>
           Change Practice Log
         </button>
       </header>
@@ -114,6 +120,7 @@ export default function ActivityDashboard({
           <div><h2>Daily practice</h2><p>Color intensity represents total minutes practiced.</p></div>
           <div className="card-status"><span>{view.summary.days[0].date.slice(0,4)}—{view.summary.days[view.summary.days.length - 1].date.slice(0,4)}</span><button className="refresh-button" type="button" onClick={() => void refresh()} disabled={isRefreshing} aria-busy={isRefreshing} title={refreshTitle}><i className={isRefreshing ? "is-spinning" : ""} aria-hidden="true">↻</i>{refreshLabel}</button></div>
         </div>
+        {payload.error && !isRefreshing && <p className="refresh-error" role="alert">{payload.error.message}</p>}
         <div className="chart-scroll">
           <div className="chart" style={{ "--weeks": view.weeks } as React.CSSProperties}>
             <div className="month-labels">{view.months.map((month, i) => <span key={`${month.label}-${i}`} style={{ gridColumn: month.column }}>{month.label}</span>)}</div>
@@ -121,16 +128,16 @@ export default function ActivityDashboard({
             <div className="heatmap">
               {view.cells.map(cell => {
                 const state = !cell.inRange ? "Outside tracking period" : !cell.occurred ? "Not occurred yet" : cell.minutes ? duration(cell.minutes) : "No practice";
-                const date = localDate(cell.date).toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric", year:"numeric" });
+                const date = formatCalendarDate(cell.date, { weekday:"long", month:"long", day:"numeric", year:"numeric" });
                 const label = `${date}: ${state}${cell.items.length ? `. Practiced: ${cell.items.join(", ")}` : ""}`;
                 const showPopover = (target: HTMLButtonElement) => { const rect = target.getBoundingClientRect(); setPopover({ date, state, items: cell.items, x: rect.left + rect.width / 2, y: rect.top }); };
-                return <button key={cell.date} className={`cell level-${level(cell.minutes)} ${cell.inRange ? cell.occurred ? "" : "future" : "outside"}`} aria-label={label} disabled={!cell.inRange} onMouseEnter={event => showPopover(event.currentTarget)} onMouseLeave={() => setPopover(null)} onFocus={event => showPopover(event.currentTarget)} onBlur={() => setPopover(null)} onClick={() => setSelected({ date: cell.date, minutes: cell.minutes, items: cell.items, occurred: cell.occurred })} />;
+                return <button key={cell.date} className={`cell level-${level(cell.minutes)} ${cell.inRange ? cell.occurred ? "" : "future" : "outside"}`} aria-label={label} disabled={!cell.inRange} onMouseEnter={event => showPopover(event.currentTarget)} onMouseLeave={() => setPopover(null)} onFocus={event => showPopover(event.currentTarget)} onBlur={() => setPopover(null)} onClick={() => setSelectedDate(cell.date)} />;
               })}
             </div>
           </div>
         </div>
         {popover && <div className="cell-popover" style={{ left: popover.x, top: popover.y }} role="tooltip"><b>{popover.date}</b><span>{popover.state}</span>{popover.items.length > 0 && <ul>{popover.items.map(item => <li key={item}>{item}</li>)}</ul>}</div>}
-        <div className="card-foot"><p>{selected ? <><b>{localDate(selected.date).toLocaleDateString("en-US", { month:"long", day:"numeric", year:"numeric" })}</b><span>{!selected.occurred ? "Not occurred yet" : selected.minutes ? duration(selected.minutes) : "No practice recorded"}</span></> : <span>Select a day to see its total</span>}</p><div className="legend"><span>Less</span>{[0,1,2,3,4].map(n => <i key={n} className={`cell level-${n}`} />)}<span>More</span></div></div>
+        <div className="card-foot"><p>{selected ? <><b>{formatCalendarDate(selected.date, { month:"long", day:"numeric", year:"numeric" })}</b><span>{!selected.occurred ? "Not occurred yet" : selected.minutes ? duration(selected.minutes) : "No practice recorded"}</span></> : <span>Select a day to see its total</span>}</p><div className="legend"><span>Less</span>{[0,1,2,3,4].map(n => <i key={n} className={`cell level-${n}`} />)}<span>More</span></div></div>
       </section>
       <section className="stats" aria-label="Practice summary">
         <article className="total-card"><span>Total practice time</span><strong>{duration(payload.totalHours * 60)}</strong></article>

@@ -338,6 +338,16 @@ button:disabled {
   animation: spin 0.8s linear infinite;
 }
 
+.refresh-error {
+  max-width: 520px;
+  margin: 10px 0 0 auto;
+  color: #a63721;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: right;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
@@ -796,6 +806,11 @@ footer {
   .refresh-button {
     max-width: 45vw;
     font-size: 11px;
+  }
+
+  .refresh-error {
+    max-width: none;
+    text-align: left;
   }
 
   .chart-scroll {

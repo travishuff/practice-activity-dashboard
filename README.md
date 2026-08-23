@@ -8,8 +8,8 @@ This universal installer works on both Apple Silicon and Intel Macs. You can
 also [view all releases](https://github.com/travishuff/practice-activity-dashboard/releases).
 
 Practice Activity is a macOS desktop dashboard for the Mark Walker Practice Log.
-It reads the existing Google Sheets layout and displays a live 365-day practice
-heatmap and summary.
+It reads the existing Google Sheets layout and displays a 365-day practice
+heatmap and summary that you refresh on demand.
 
 ## Install on macOS
 
@@ -51,6 +51,9 @@ Use **Change Practice Log** in the app to connect a different sheet. Settings an
 the most recent successful response are stored in the current macOS user's
 Application Support directory. Cached data is associated with its exact sheet
 URL so data from a previous sheet is never used for a new one.
+
+Use **Refresh** above the heatmap whenever you want to load the latest changes
+from Google Sheets. The dashboard does not refresh automatically.
 
 ## Development
 
@@ -115,7 +118,7 @@ artifacts under `out/` are generated files and are not committed to Git.
 - `electron/practice-service.ts`: sheet validation, refresh, and fallback logic
 - `electron/settings-store.ts`: local settings and per-sheet cache
 - `app/setup-wizard.tsx`: first-run sharing and URL setup
-- `app/activity-dashboard.tsx`: live dashboard UI
+- `app/activity-dashboard.tsx`: dashboard UI and manual refresh behavior
 - `app/practice-sheet.ts`: Google GViz parsing and Practice Log validation
 - `app/practice-metrics.ts`: 365-day statistics
 
