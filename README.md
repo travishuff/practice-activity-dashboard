@@ -4,7 +4,7 @@
 
 ## ⬇️ Download the macOS installer
 
-[**Download Practice Activity v0.4.1 for macOS (.dmg) →**](https://github.com/travishuff/practice-activity-dashboard/releases/download/v0.4.1/Practice-Activity-v0.4.1-macOS-universal.dmg)
+[**Download Practice Activity v0.5.0 for macOS (.dmg) →**](https://github.com/travishuff/practice-activity-dashboard/releases/download/v0.5.0/Practice-Activity-v0.5.0-macOS-universal.dmg)
 
 This universal installer works on both Apple Silicon and Intel Macs. You can
 also [view all releases](https://github.com/travishuff/practice-activity-dashboard/releases).

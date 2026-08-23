@@ -106,13 +106,18 @@ export default function ActivityDashboard({
     while (cells.length % 7) { const d = new Date(calendarDate(cells[cells.length - 1].date).getTime() + DAY); cells.push({ date: calendarDateKey(d), minutes: 0, items: [], inRange: false, elapsed: false }); }
     const weeks = cells.length / 7;
     const months: Array<{ label: string; column: number }> = [];
-    let previous = "";
+    const years: Array<{ label: string; column: number }> = [];
+    let previousMonth = "";
+    let previousYear = "";
     cells.forEach((cell, index) => {
       if (index % 7 !== 0) return;
       const d = calendarDate(cell.date); const name = d.toLocaleString("en-US", { month: "short", timeZone: "UTC" });
-      if (name !== previous) { months.push({ label: name, column: Math.floor(index / 7) + 1 }); previous = name; }
+      const column = Math.floor(index / 7) + 1;
+      const year = String(d.getUTCFullYear());
+      if (name !== previousMonth) { months.push({ label: name, column }); previousMonth = name; }
+      if (year !== previousYear) { years.push({ label: year, column }); previousYear = year; }
     });
-    return { cells, weeks, months, summary };
+    return { cells, weeks, months, years, summary };
   }, [payload.data, payload.periodStart, today]);
   const selected = selectedDate
     ? view.summary.days.find(day => day.date === selectedDate) ?? null
@@ -147,7 +152,11 @@ export default function ActivityDashboard({
         {payload.error && !isRefreshing && <p className="refresh-error" role="alert">{payload.error.message}</p>}
         <div className="chart-scroll">
           <div className="chart" style={{ "--weeks": view.weeks } as React.CSSProperties}>
-            <div className="month-labels">{view.months.map((month, i) => <span key={`${month.label}-${i}`} style={{ gridColumn: month.column }}>{month.label}</span>)}</div>
+            <div className="calendar-labels">
+              {view.years.map((year, i) => <b key={`${year.label}-${i}`} className="year-label" style={{ gridColumn: year.column }}>{year.label}</b>)}
+              {view.months.map((month, i) => <span key={`${month.label}-${i}`} className="month-label" style={{ gridColumn: month.column }}>{month.label}</span>)}
+              {view.years.map((year, i) => <i key={`separator-${year.label}`} className="year-separator" style={{ gridColumn: `${year.column} / ${view.years[i + 1]?.column ?? view.weeks + 1}` }} aria-hidden="true" />)}
+            </div>
             <div className="day-labels"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
             <div className="heatmap">
               {view.cells.map(cell => {
