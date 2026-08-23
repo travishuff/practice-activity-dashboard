@@ -83,7 +83,7 @@ export default function ActivityDashboard({
   initialTotalHours: number;
 }) {
   const today = useToday();
-  const [payload, setPayload] = useState<PracticePayload>({ data: initial, periodStart: initialPeriodStart, totalHours: initialTotalHours, live: false, checkedAt: null, error: null, warnings: [] });
+  const [payload, setPayload] = useState<PracticePayload | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const refreshingRef = useRef(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -97,20 +97,30 @@ export default function ActivityDashboard({
       const response = await fetch("/api/practice", { cache: "no-store" });
       const next: unknown = await response.json();
       if (!isPracticePayload(next) || (!response.ok && next.live)) throw new Error("Invalid practice response");
-      setPayload(current => next.live || !current.checkedAt
+      setPayload(current => next.live || current === null
         ? next
         : { ...current, live: false, error: next.error });
     } catch {
-      setPayload(current => ({
-        ...current,
-        live: false,
-        error: { code: "refresh_failed", message: "Data refresh failed" },
-      }));
+      setPayload(current => current
+        ? {
+            ...current,
+            live: false,
+            error: { code: "refresh_failed", message: "Data refresh failed" },
+          }
+        : {
+            data: initial,
+            periodStart: initialPeriodStart,
+            totalHours: initialTotalHours,
+            live: false,
+            checkedAt: null,
+            error: { code: "refresh_failed", message: "Data refresh failed" },
+            warnings: [],
+          });
     } finally {
       refreshingRef.current = false;
       setIsRefreshing(false);
     }
-  }, []);
+  }, [initial, initialPeriodStart, initialTotalHours]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void refresh(), 0);
@@ -118,6 +128,7 @@ export default function ActivityDashboard({
   }, [refresh]);
 
   const view = useMemo(() => {
+    if (!payload) return null;
     const summary = summarizePracticePeriod(payload.data, { periodStart: payload.periodStart, today });
     const period = new Map(summary.days.map(day => [day.date, day]));
     const periodStart = calendarDate(summary.days[0].date);
@@ -138,10 +149,19 @@ export default function ActivityDashboard({
       if (name !== previous) { months.push({ label: name, column: Math.floor(index / 7) + 1 }); previous = name; }
     });
     return { cells, weeks, months, summary };
-  }, [payload.data, payload.periodStart, today]);
-  const selected = selectedDate
+  }, [payload, today]);
+  const selected = selectedDate && view
     ? view.summary.days.find(day => day.date === selectedDate) ?? null
     : null;
+
+  if (!payload || !view) {
+    return (
+      <main className="loading-shell">
+        <div className="setup-brand" aria-hidden="true">PA</div>
+        <p>Opening Practice Activity…</p>
+      </main>
+    );
+  }
 
   const refreshLabel = isRefreshing
     ? "Refreshing…"
