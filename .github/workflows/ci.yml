@@ -34,14 +34,17 @@ jobs:
       ELECTRON_SKIP_BINARY_DOWNLOAD: 1
 
     steps:
-      - uses: actions/checkout@v4
+      # These majors run on the node24 action runtime. Older ones target
+      # node20, which GitHub deprecated and now force-runs on node24 with a
+      # warning on every job.
+      - uses: actions/checkout@v7
 
       # Must precede setup-node so its pnpm cache lookup can find the binary.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 10
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
