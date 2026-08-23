@@ -12,6 +12,7 @@ import { formatRefreshedAt } from "./refresh-status";
 import { summarizePracticePeriod } from "./practice-metrics";
 import type { PracticePayload } from "./practice-sheet";
 import { practiceActivityTitle } from "./user-name";
+import { APP_VERSION } from "./version";
 
 function level(minutes: number) { return minutes === 0 ? 0 : minutes < 60 ? 1 : minutes < 120 ? 2 : minutes < 180 ? 3 : 4; }
 function duration(minutes: number) { const rounded = Math.round(minutes); const h = Math.floor(rounded / 60); const m = rounded % 60; return h ? `${h}h${m ? ` ${m}m` : ""}` : `${m}m`; }
@@ -186,7 +187,10 @@ export default function ActivityDashboard({
             <RangeChart values={[view.summary.streaks.minimum, view.summary.streaks.average, view.summary.streaks.maximum]} format={value => `${Number.isInteger(value) ? value : value.toFixed(1)}d`} labels={["Shortest", "Average", "Longest"]} />
           </article>
       </section>
-      <footer>{formatRefreshedAt(payload.checkedAt, payload.live)}</footer>
+      <footer>
+        <span>{formatRefreshedAt(payload.checkedAt, payload.live)}</span>
+        <small>Practice Activity v{APP_VERSION}</small>
+      </footer>
     </main>
   );
 }
