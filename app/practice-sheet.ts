@@ -1,4 +1,4 @@
-import type { PracticeDay } from "./practice-data";
+import { PRACTICE_PERIOD_DAYS, type PracticeDay } from "./practice-data.ts";
 
 export type SheetCell = { v?: unknown; f?: string } | null | undefined;
 export type SheetRow = { c?: SheetCell[] };
@@ -14,7 +14,7 @@ export type PracticePayload = {
   periodStart: string | null;
   totalHours: number;
   live: boolean;
-  checkedAt: string | null;
+  checkedAt: string;
   error: { code: PracticeDataErrorCode; message: string } | null;
   warnings: string[];
 };
@@ -43,9 +43,13 @@ function cellNumber(cell: SheetCell) {
  * The single definition of a day-header row. Both the header scan and the item
  * loop below must agree on this: when they disagreed, a stray number in
  * column A ended a day early and silently discarded every item row after it.
+ *
+ * Bounding day numbers by PRACTICE_PERIOD_DAYS is what guarantees every parsed
+ * date lands inside the summary window, since each date is pinned to
+ * periodStart + (day - 1). Keep the two tied to the same constant.
  */
 function isDayNumber(value: number) {
-  return Number.isInteger(value) && value >= 1 && value <= 365;
+  return Number.isInteger(value) && value >= 1 && value <= PRACTICE_PERIOD_DAYS;
 }
 
 function cellText(cell: SheetCell) {
@@ -253,23 +257,4 @@ export async function fetchPracticePayload(
   } finally {
     clearTimeout(timeout);
   }
-}
-
-export function createFallbackPayload(
-  error: unknown,
-  data: PracticeDay[],
-  totalHours: number,
-): PracticePayload {
-  const knownError = error instanceof PracticeSheetError
-    ? error
-    : new PracticeSheetError("source_unavailable", "The live sheet is temporarily unavailable");
-  return {
-    data,
-    periodStart: null,
-    totalHours,
-    live: false,
-    checkedAt: null,
-    error: { code: knownError.code, message: knownError.message },
-    warnings: [],
-  };
 }

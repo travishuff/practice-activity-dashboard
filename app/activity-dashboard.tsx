@@ -7,6 +7,7 @@ import {
   DAY,
   formatCalendarDate,
 } from "./calendar-date";
+import { formatRefreshedAt } from "./refresh-status";
 import { summarizePracticePeriod } from "./practice-metrics";
 import type { PracticePayload } from "./practice-sheet";
 import { practiceActivityTitle } from "./user-name";
@@ -99,10 +100,6 @@ export default function ActivityDashboard({
         : "Refresh";
   const refreshTitle = payload.error?.message
     ?? (payload.warnings.length ? payload.warnings.join("\n") : "Refresh practice data from Google Sheets");
-  const snapshotDate = formatCalendarDate(
-    view.summary.days.filter(day => day.elapsed).at(-1)?.date ?? view.summary.days[0].date,
-    { month: "short", day: "numeric", year: "numeric" },
-  );
 
   return (
     <main className="shell">
@@ -163,9 +160,7 @@ export default function ActivityDashboard({
             <RangeChart values={[view.summary.streaks.minimum, view.summary.streaks.average, view.summary.streaks.maximum]} format={value => `${Number.isInteger(value) ? value : value.toFixed(1)}d`} labels={["Shortest", "Average", "Longest"]} />
           </article>
       </section>
-      <footer>{payload.checkedAt
-        ? `${payload.live ? "Last refreshed" : "Last successful refresh"} ${new Date(payload.checkedAt).toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit" })}`
-        : payload.error ? `Saved snapshot through ${snapshotDate}` : "Checking source…"}</footer>
+      <footer>{formatRefreshedAt(payload.checkedAt, payload.live)}</footer>
     </main>
   );
 }

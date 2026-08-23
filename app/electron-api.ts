@@ -43,7 +43,7 @@ export function isPracticePayload(value: unknown): value is PracticePayload {
     )
     && Number.isFinite(candidate.totalHours)
     && typeof candidate.live === "boolean"
-    && (candidate.checkedAt === null || typeof candidate.checkedAt === "string")
+    && typeof candidate.checkedAt === "string"
     && validError
     && Array.isArray(candidate.warnings)
     && candidate.warnings.every(warning => typeof warning === "string");

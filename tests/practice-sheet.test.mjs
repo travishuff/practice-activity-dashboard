@@ -3,12 +3,12 @@ import test from "node:test";
 import {
   buildSheetDataFeed,
   calculateTotalHours,
-  createFallbackPayload,
   fetchPracticePayload,
   parseGvizRows,
   parsePracticeDays,
   PracticeSheetError,
 } from "../app/practice-sheet.ts";
+import { PRACTICE_PERIOD_DAYS } from "../app/practice-data.ts";
 
 function cell(value, formatted) {
   return value === null ? null : { v: value, ...(formatted ? { f: formatted } : {}) };
@@ -146,6 +146,26 @@ test("total hours are derived from every occurred day's minutes", () => {
   );
 });
 
+test("every parsed date lands inside the summary window", () => {
+  // Day numbers are bounded by PRACTICE_PERIOD_DAYS and each date is pinned to
+  // periodStart + (day - 1), so parsed data can never fall outside the window
+  // the dashboard renders. Rows outside that range are reported, not accepted.
+  const rows = [row([1, ["Date(2025,0,1)", "1-1-25"]]), row([null, null, "X", null, 60])];
+  for (const dayColumn of [PRACTICE_PERIOD_DAYS, PRACTICE_PERIOD_DAYS + 1, 400, 0, -1, 1.5]) {
+    rows.push(row([dayColumn, null]), row([null, null, "Y", null, 30]));
+  }
+
+  const parsed = parsePracticeDays(rows);
+  const start = Date.parse(`${parsed.periodStart}T00:00:00Z`);
+  const offsets = parsed.data.map(
+    day => (Date.parse(`${day.date}T00:00:00Z`) - start) / 86_400_000,
+  );
+
+  assert.deepEqual(offsets, [0, PRACTICE_PERIOD_DAYS - 1]);
+  assert.ok(Math.max(...offsets) < PRACTICE_PERIOD_DAYS);
+  assert.ok(parsed.data.length <= PRACTICE_PERIOD_DAYS);
+});
+
 test("Google Sheets sharing URLs become A:E feeds", () => {
   assert.equal(
     buildSheetDataFeed("https://docs.google.com/spreadsheets/d/example-sheet/edit?usp=sharing#gid=42"),
@@ -159,18 +179,4 @@ test("Google Sheets sharing URLs become A:E feeds", () => {
     () => buildSheetDataFeed("https://example.com/not-a-sheet"),
     error => error instanceof PracticeSheetError && error.code === "invalid_source",
   );
-});
-
-test("fallback responses expose a degraded state instead of claiming success", () => {
-  const error = new PracticeSheetError("source_unavailable", "The live sheet is temporarily unavailable");
-  const fallback = createFallbackPayload(error, [{ date: "2025-09-07", minutes: 90 }], 1.5);
-  assert.deepEqual(fallback, {
-    data: [{ date: "2025-09-07", minutes: 90 }],
-    periodStart: null,
-    totalHours: 1.5,
-    live: false,
-    checkedAt: null,
-    error: { code: "source_unavailable", message: "The live sheet is temporarily unavailable" },
-    warnings: [],
-  });
 });

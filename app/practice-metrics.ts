@@ -5,9 +5,7 @@ import {
   DAY,
   localCalendarDateKey,
 } from "./calendar-date.ts";
-import type { PracticeDay } from "./practice-data";
-
-export const PRACTICE_PERIOD_DAYS = 365;
+import { PRACTICE_PERIOD_DAYS, type PracticeDay } from "./practice-data.ts";
 
 export type RollingPracticeSummary = {
   days: Array<{ date: string; minutes: number; items: string[]; elapsed: boolean }>;
