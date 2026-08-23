@@ -293,7 +293,7 @@ button:disabled {
   white-space: nowrap;
 }
 
-.sync {
+.refresh-button {
   display: flex;
   align-items: center;
   gap: 9px;
@@ -307,26 +307,49 @@ button:disabled {
   font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 
-.sync i {
-  width: 8px;
-  height: 8px;
+.refresh-button:hover:not(:disabled),
+.refresh-button:focus-visible {
+  border-color: var(--accent);
+  outline: 0;
+  background: #fff;
+  color: var(--accent);
+}
+
+.refresh-button i {
+  display: inline-grid;
+  width: 14px;
+  height: 14px;
   flex: 0 0 auto;
-  border-radius: 50%;
-  background: #a2aaa4;
+  place-items: center;
+  color: var(--accent);
+  font-size: 17px;
+  font-style: normal;
+  line-height: 1;
 }
 
-.sync.is-live i {
-  background: var(--accent);
-  box-shadow: 0 0 0 5px rgba(223, 100, 20, 0.12);
-  animation: pulse 2s infinite;
+.refresh-button:disabled {
+  opacity: 0.65;
 }
 
-@keyframes pulse {
-  50% {
-    box-shadow: 0 0 0 8px rgba(223, 100, 20, 0);
-  }
+.refresh-button i.is-spinning {
+  animation: spin 0.8s linear infinite;
+}
+
+.refresh-error {
+  max-width: 520px;
+  margin: 10px 0 0 auto;
+  color: #a63721;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: right;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .activity-card {
@@ -780,9 +803,14 @@ footer {
     display: none;
   }
 
-  .sync {
+  .refresh-button {
     max-width: 45vw;
     font-size: 11px;
+  }
+
+  .refresh-error {
+    max-width: none;
+    text-align: left;
   }
 
   .chart-scroll {
