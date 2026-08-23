@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { PracticeDay } from "./practice-data";
 import { summarizePracticePeriod } from "./practice-metrics";
 import type { PracticePayload } from "./practice-sheet";
@@ -47,37 +47,30 @@ function RangeChart({ values, format, labels }: { values: [number, number, numbe
 
 export default function ActivityDashboard({ initial, initialTotalHours }: { initial: PracticeDay[]; initialTotalHours: number }) {
   const [payload, setPayload] = useState<PracticePayload>({ data: initial, totalHours: initialTotalHours, live: false, checkedAt: null, error: null, warnings: [] });
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [selected, setSelected] = useState<(PracticeDay & { occurred: boolean }) | null>(null);
   const [popover, setPopover] = useState<{ date: string; state: string; items: string[]; x: number; y: number } | null>(null);
 
-  useEffect(() => {
-    let controller: AbortController | null = null;
-    const refresh = async () => {
-      controller?.abort();
-      controller = new AbortController();
-      try {
-        const response = await fetch("/api/practice", { cache: "no-store", signal: controller.signal });
-        const next: unknown = await response.json();
-        if (!isPracticePayload(next) || (!response.ok && next.live)) throw new Error("Invalid practice response");
-        setPayload(current => next.live || !current.checkedAt
-          ? next
-          : { ...current, live: false, error: next.error });
-      } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setPayload(current => ({
-          ...current,
-          live: false,
-          error: { code: "refresh_failed", message: "Live data refresh failed" },
-        }));
-      }
-    };
-    void refresh();
-    const timer = window.setInterval(() => void refresh(), 60_000);
-    return () => {
-      window.clearInterval(timer);
-      controller?.abort();
-    };
-  }, []);
+  const refresh = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      const response = await fetch("/api/practice", { cache: "no-store" });
+      const next: unknown = await response.json();
+      if (!isPracticePayload(next) || (!response.ok && next.live)) throw new Error("Invalid practice response");
+      setPayload(current => next.live || !current.checkedAt
+        ? next
+        : { ...current, live: false, error: next.error });
+    } catch {
+      setPayload(current => ({
+        ...current,
+        live: false,
+        error: { code: "refresh_failed", message: "Data refresh failed" },
+      }));
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const view = useMemo(() => {
     const summary = summarizePracticePeriod(payload.data);
@@ -102,13 +95,15 @@ export default function ActivityDashboard({ initial, initialTotalHours }: { init
     return { cells, weeks, months, summary };
   }, [payload.data]);
 
-  const syncLabel = payload.live
-    ? payload.warnings.length
-      ? `Live · ${payload.warnings.length} sheet ${payload.warnings.length === 1 ? "issue" : "issues"}`
-      : "Live · refreshes every minute"
+  const refreshLabel = isRefreshing
+    ? "Refreshing…"
     : payload.error
-      ? `${payload.checkedAt ? "Last live data" : "Snapshot"} · ${payload.error.message}`
-      : "Checking live sheet…";
+      ? "Try again"
+      : payload.warnings.length
+        ? `Refresh · ${payload.warnings.length} sheet ${payload.warnings.length === 1 ? "issue" : "issues"}`
+        : "Refresh";
+  const refreshTitle = payload.error?.message
+    ?? (payload.warnings.length ? payload.warnings.join("\n") : "Refresh practice data from Google Sheets");
   const snapshotDate = localDate(view.summary.days.filter(day => day.occurred).at(-1)?.date ?? view.summary.days[0].date)
     .toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
@@ -120,8 +115,9 @@ export default function ActivityDashboard({ initial, initialTotalHours }: { init
       <section className="activity-card" id="activity">
         <div className="card-head">
           <div><h2>Daily practice</h2><p>Color intensity represents total minutes practiced.</p></div>
-          <div className="card-status"><span>{view.summary.days[0].date.slice(0,4)}—{view.summary.days[view.summary.days.length - 1].date.slice(0,4)}</span><div className={`sync ${payload.live ? "is-live" : ""}`} title={payload.error?.message ?? payload.warnings.join("\n")}><i />{syncLabel}</div></div>
+          <div className="card-status"><span>{view.summary.days[0].date.slice(0,4)}—{view.summary.days[view.summary.days.length - 1].date.slice(0,4)}</span><button className="refresh-button" type="button" onClick={() => void refresh()} disabled={isRefreshing} aria-busy={isRefreshing} title={refreshTitle}><i className={isRefreshing ? "is-spinning" : ""} aria-hidden="true">↻</i>{refreshLabel}</button></div>
         </div>
+        {payload.error && !isRefreshing && <p className="refresh-error" role="alert">{payload.error.message}</p>}
         <div className="chart-scroll">
           <div className="chart" style={{ "--weeks": view.weeks } as React.CSSProperties}>
             <div className="month-labels">{view.months.map((month, i) => <span key={`${month.label}-${i}`} style={{ gridColumn: month.column }}>{month.label}</span>)}</div>
@@ -156,8 +152,8 @@ export default function ActivityDashboard({ initial, initialTotalHours }: { init
         <article className="range-card"><span>Practice streaks</span><RangeChart values={[view.summary.streaks.minimum, view.summary.streaks.average, view.summary.streaks.maximum]} format={value => `${Number.isInteger(value) ? value : value.toFixed(1)}d`} labels={["Shortest", "Average", "Longest"]} /></article>
       </section>
       <footer>{payload.checkedAt
-        ? `${payload.live ? "Source checked" : "Last live update"} ${new Date(payload.checkedAt).toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit" })}`
-        : payload.error ? `Saved snapshot through ${snapshotDate}` : "Checking source…"}</footer>
+        ? `${payload.live ? "Last refreshed" : "Last successful refresh"} ${new Date(payload.checkedAt).toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit" })}`
+        : payload.error ? `Saved snapshot through ${snapshotDate}` : "Select Refresh to check the source"}</footer>
     </main>
   );
 }
