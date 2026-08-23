@@ -136,11 +136,14 @@ which imports nothing from `electron` so it can be unit tested in plain Node.
 Keep it that way; the electron-facing wrapper is what holds the `isPackaged`
 gate and the filesystem reads.
 
-Note that a main-process helper must not be named `useSomething` — the
-react-hooks lint rule applies repo-wide and reads it as a misplaced hook.
-
 ## Conventions
 
+- **The React rule sets are scoped to renderer files**, `app/**` and
+  `renderer.tsx`, in [`eslint.config.mjs`](eslint.config.mjs). Applied
+  repo-wide, `react-hooks/rules-of-hooks` treats any `use…` function as a hook,
+  so a main-process helper named `useSomething` failed lint in a file React
+  never loads. Add new renderer directories to `REACT_FILES`, and expect no
+  React linting outside them.
 - **Relative value imports between app modules need an explicit `.ts`
   extension.** Tests run under `node --experimental-strip-types`, which does not
   do extensionless resolution. `import type` is erased before the resolver runs,
