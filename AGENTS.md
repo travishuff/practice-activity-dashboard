@@ -137,18 +137,21 @@ In [`app/practice-sheet.ts`](app/practice-sheet.ts):
   nothing the tests import reaches `electron/`. Packaging is **not** covered —
   `pnpm package` remains a local check.
 
+## Invariants worth not breaking
+
+- **`PRACTICE_PERIOD_DAYS` bounds both the window and the valid day number.**
+  Because day numbers are capped at it and every date is pinned to
+  `periodStart + (day - 1)`, parsed data can never fall outside the window the
+  dashboard renders — which is why "Total practice time" and the heatmap
+  cannot disagree. Both sides import the one constant from
+  [`app/practice-data.ts`](app/practice-data.ts); do not re-spell 365.
+- **`checkedAt` is always present.** Nothing produces a null, so the footer has
+  no "unknown time" branch. If you add a payload source, give it a timestamp.
+- **`today` is state, not a render-time read.** The dashboard re-arms a
+  timeout at each local midnight. Anything deriving from today must depend on
+  that state so it re-renders at the rollover.
+
 ## Known open issues
 
-Found during review, not yet fixed:
-
-1. **Data past day 365 makes two on-screen numbers disagree.** The summary
-   truncates to 365 days but `calculateTotalHours` sums everything, so "Total
-   practice time" can exceed the heatmap's total with no indication.
-2. **`createFallbackPayload` is dead.** Unreferenced in production since the
-   cache path replaced it, but still exported and still tested, which gives a
-   false coverage signal.
-3. **Stale cache timestamps read as fresh.** On a failed refresh the footer
-   renders the cached `checkedAt` as a bare time of day with no date, so a
-   week-old snapshot looks like a recent one.
-4. **`today` is captured at render.** An app left open past midnight keeps the
-   previous day's `elapsed` until refreshed.
+None outstanding from the review that produced this file. Add new findings
+here rather than letting them live only in a pull request description.
