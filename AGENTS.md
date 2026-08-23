@@ -151,6 +151,10 @@ gate and the filesystem reads.
   enabled in `tsconfig.json` for this reason.
 - **`summarizePracticePeriod` takes an injectable `today`.** Always pass a fixed
   date in tests; a test that lets it read the wall clock will rot within a day.
+- **The pnpm version is pinned in `package.json` `packageManager`.** CI reads it
+  rather than naming a version, so it cannot drift from what you run locally.
+  It once did: CI installed with pnpm 10 while development used pnpm 11. Change
+  it with `corepack use pnpm@<version>` so the integrity hash stays correct.
 - Quality gates, all currently clean:
   ```bash
   pnpm test && pnpm typecheck && pnpm lint
