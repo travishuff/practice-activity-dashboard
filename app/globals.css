@@ -537,10 +537,17 @@ body {
 }
 
 footer {
+  display: grid;
+  gap: 4px;
   padding: 18px 4px 0;
   color: #959c97;
   font-size: 11px;
   text-align: right;
+}
+
+footer small {
+  color: #adb2ae;
+  font-size: 10px;
 }
 
 @media (max-width: 560px) {

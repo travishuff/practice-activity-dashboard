@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   calendarDate,
   calendarDateKey,
@@ -12,6 +12,7 @@ import type { PracticeDay } from "./practice-data";
 import { summarizePracticePeriod } from "./practice-metrics";
 import { formatRefreshedAt } from "./refresh-status";
 import type { PracticePayload } from "./practice-sheet";
+import { APP_VERSION } from "./version";
 
 function level(minutes: number) { return minutes === 0 ? 0 : minutes < 60 ? 1 : minutes < 120 ? 2 : minutes < 180 ? 3 : 4; }
 function duration(minutes: number) { const rounded = Math.round(minutes); const h = Math.floor(rounded / 60); const m = rounded % 60; return h ? `${h}h${m ? ` ${m}m` : ""}` : `${m}m`; }
@@ -84,11 +85,13 @@ export default function ActivityDashboard({
   const today = useToday();
   const [payload, setPayload] = useState<PracticePayload>({ data: initial, periodStart: initialPeriodStart, totalHours: initialTotalHours, live: false, checkedAt: null, error: null, warnings: [] });
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const refreshingRef = useRef(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [popover, setPopover] = useState<{ date: string; state: string; items: string[]; x: number; y: number } | null>(null);
 
-  const refresh = async () => {
-    if (isRefreshing) return;
+  const refresh = useCallback(async () => {
+    if (refreshingRef.current) return;
+    refreshingRef.current = true;
     setIsRefreshing(true);
     try {
       const response = await fetch("/api/practice", { cache: "no-store" });
@@ -104,9 +107,15 @@ export default function ActivityDashboard({
         error: { code: "refresh_failed", message: "Data refresh failed" },
       }));
     } finally {
+      refreshingRef.current = false;
       setIsRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void refresh(), 0);
+    return () => window.clearTimeout(timer);
+  }, [refresh]);
 
   const view = useMemo(() => {
     const summary = summarizePracticePeriod(payload.data, { periodStart: payload.periodStart, today });
@@ -187,9 +196,12 @@ export default function ActivityDashboard({
         <article className="range-card"><span>Daily practice range</span><RangeChart values={[view.summary.daily.minimum, view.summary.daily.maximum]} format={duration} labels={["Shortest", "Longest"]} /><small className="range-note">Average <b>{duration(view.summary.daily.average)}</b> across all {view.summary.elapsedDays} days so far · range covers the {view.summary.practiceDays} days with practice</small></article>
         <article className="range-card"><span>Practice streaks</span><RangeChart values={[view.summary.streaks.minimum, view.summary.streaks.average, view.summary.streaks.maximum]} format={value => `${Number.isInteger(value) ? value : value.toFixed(1)}d`} labels={["Shortest", "Average", "Longest"]} /></article>
       </section>
-      <footer>{payload.checkedAt
-        ? formatRefreshedAt(payload.checkedAt, payload.live)
-        : "Select Refresh to check the source"}</footer>
+      <footer>
+        <span>{payload.checkedAt
+          ? formatRefreshedAt(payload.checkedAt, payload.live)
+          : isRefreshing ? "Refreshing practice data…" : "Refresh unavailable"}</span>
+        <small>Practice Activity v{APP_VERSION}</small>
+      </footer>
     </main>
   );
 }
