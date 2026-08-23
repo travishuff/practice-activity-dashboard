@@ -65,6 +65,58 @@ test("undated practice is retained with an explicit source warning", () => {
   });
 });
 
+test("a stray number in the day column no longer truncates the day", () => {
+  // Column A holds 999 partway through day 1. The header scan ignores it (it is
+  // not a day number), so the item loop must not treat it as a boundary either.
+  const rows = [
+    row([1, ["Date(2025,8,7)", "9-7-25"]]),
+    row([null, null, "Rudiments", null, 60]),
+    row([999, null, "TOTALS", null, 60]),
+    row([null, null, "Grooves", null, 45]),
+    row([2, ["Date(2025,8,8)", "9-8-25"]]),
+    row([null, null, "Fills", null, 30]),
+  ];
+
+  assert.deepEqual(parsePracticeDays(rows), {
+    data: [
+      // 60 + 45. The 60 on the TOTALS row is deliberately not counted.
+      { date: "2025-09-07", minutes: 105, items: ["Rudiments", "Grooves"] },
+      { date: "2025-09-08", minutes: 30, items: ["Fills"] },
+    ],
+    warnings: ["Day 1: ignored a row whose day column reads 999"],
+    periodStart: "2025-09-07",
+  });
+});
+
+test("a trailing totals row is reported rather than silently swallowing practice", () => {
+  const rows = [
+    row([1, ["Date(2025,8,7)", "9-7-25"]]),
+    row([null, null, "Rudiments", null, 60]),
+    row([0, null, "Grand total", null, 60]),
+  ];
+  const parsed = parsePracticeDays(rows);
+
+  assert.deepEqual(parsed.data, [
+    { date: "2025-09-07", minutes: 60, items: ["Rudiments"] },
+  ]);
+  assert.deepEqual(parsed.warnings, [
+    "Day 1: ignored a row whose day column reads 0",
+  ]);
+});
+
+test("repeated identical anomalies collapse into one warning", () => {
+  const rows = [
+    row([1, ["Date(2025,8,7)", "9-7-25"]]),
+    row([999, null, "TOTALS", null, 10]),
+    row([null, null, "Rudiments", null, 60]),
+    row([999, null, "TOTALS", null, 10]),
+  ];
+  const parsed = parsePracticeDays(rows);
+
+  assert.equal(parsed.data[0].minutes, 60);
+  assert.equal(parsed.warnings.length, 1);
+});
+
 test("the live payload calculates total hours from daily minutes", async () => {
   const fetcher = async url => {
     if (url.endsWith("range=A:E")) return new Response(gviz(practiceRows));

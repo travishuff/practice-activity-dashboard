@@ -39,6 +39,15 @@ function cellNumber(cell: SheetCell) {
   return Number.isFinite(value) ? value : null;
 }
 
+/**
+ * The single definition of a day-header row. Both the header scan and the item
+ * loop below must agree on this: when they disagreed, a stray number in
+ * column A ended a day early and silently discarded every item row after it.
+ */
+function isDayNumber(value: number) {
+  return Number.isInteger(value) && value >= 1 && value <= 365;
+}
+
 function cellText(cell: SheetCell) {
   const raw = cell?.f ?? cell?.v;
   return typeof raw === "string" && raw.trim() ? raw.trim() : null;
@@ -92,7 +101,7 @@ export function parsePracticeDays(rows: SheetRow[]) {
   const headers = rows.flatMap((row, index) => {
     const cells = row.c ?? [];
     const day = cellNumber(cells[0]);
-    if (day === null || !Number.isInteger(day) || day < 1 || day > 365) return [];
+    if (day === null || !isDayNumber(day)) return [];
     return [{ index, day, date: parseDate(cells[1]), rawDate: cellText(cells[1]) }];
   });
 
@@ -123,7 +132,15 @@ export function parsePracticeDays(rows: SheetRow[]) {
     let minutes = 0;
     const items: string[] = [];
     for (let index = header.index + 1; index < rows.length; index += 1) {
-      if (cellNumber(rows[index].c?.[0]) !== null) break;
+      const dayColumn = cellNumber(rows[index].c?.[0]);
+      if (dayColumn !== null) {
+        if (isDayNumber(dayColumn)) break;
+        // A totals row, a section marker, or a typo. Skipping it keeps the
+        // day's remaining item rows attached to the day, and counting its
+        // column-E value would inflate the day instead.
+        warnings.push(`Day ${header.day}: ignored a row whose day column reads ${dayColumn}`);
+        continue;
+      }
       const value = cellNumber(rows[index].c?.[4]);
       if (value === null) continue;
       if (value < 0) {
@@ -158,7 +175,8 @@ export function parsePracticeDays(rows: SheetRow[]) {
 
   return {
     data,
-    warnings,
+    // Identical anomalies repeated down a column would otherwise flood the UI.
+    warnings: [...new Set(warnings)],
     periodStart: new Date(periodStart).toISOString().slice(0, 10),
   };
 }
