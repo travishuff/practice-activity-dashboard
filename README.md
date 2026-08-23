@@ -1,5 +1,7 @@
 # Practice Activity
 
+[![CI](https://github.com/travishuff/practice-activity-dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/travishuff/practice-activity-dashboard/actions/workflows/ci.yml)
+
 ## ⬇️ Download the macOS installer
 
 [**Download Practice Activity v0.3.0 for macOS (.dmg) →**](https://github.com/travishuff/practice-activity-dashboard/releases/download/v0.3.0/Practice-Activity-v0.3.0-macOS-universal.dmg)
@@ -74,6 +76,10 @@ pnpm typecheck
 pnpm lint
 pnpm package
 ```
+
+The first three run in CI on every push to `main` and every pull request,
+against Node 22 and Node 24. Packaging is not covered there and stays a local
+check.
 
 ## Build the macOS installer
 
