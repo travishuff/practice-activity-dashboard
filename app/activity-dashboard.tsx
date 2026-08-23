@@ -6,6 +6,7 @@ import {
   calendarDateKey,
   DAY,
   formatCalendarDate,
+  localCalendarDateKey,
 } from "./calendar-date";
 import { formatRefreshedAt } from "./refresh-status";
 import { summarizePracticePeriod } from "./practice-metrics";
@@ -25,6 +26,30 @@ function RangeChart({ values, format, labels }: { values: number[]; format: (val
   );
 }
 
+function useToday() {
+  const [today, setToday] = useState(localCalendarDateKey);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    // Re-arm after each rollover rather than using a fixed 24h interval, so a
+    // DST shift or a slept machine cannot drift the boundary.
+    const scheduleRollover = () => {
+      const now = new Date();
+      const midnight = new Date(now);
+      midnight.setHours(24, 0, 0, 0);
+      timer = setTimeout(() => {
+        setToday(localCalendarDateKey());
+        scheduleRollover();
+      }, midnight.getTime() - now.getTime() + 1_000);
+    };
+
+    scheduleRollover();
+    return () => clearTimeout(timer);
+  }, []);
+
+  return today;
+}
+
 export default function ActivityDashboard({
   initialPayload,
   userName,
@@ -34,6 +59,7 @@ export default function ActivityDashboard({
   userName: string | null;
   onChangeSheet: () => void | Promise<void>;
 }) {
+  const today = useToday();
   const [payload, setPayload] = useState<PracticePayload>(initialPayload);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -66,7 +92,7 @@ export default function ActivityDashboard({
   };
 
   const view = useMemo(() => {
-    const summary = summarizePracticePeriod(payload.data, { periodStart: payload.periodStart });
+    const summary = summarizePracticePeriod(payload.data, { periodStart: payload.periodStart, today });
     const period = new Map(summary.days.map(day => [day.date, day]));
     const periodStart = calendarDate(summary.days[0].date);
     const periodEnd = calendarDate(summary.days[summary.days.length - 1].date);
@@ -86,7 +112,7 @@ export default function ActivityDashboard({
       if (name !== previous) { months.push({ label: name, column: Math.floor(index / 7) + 1 }); previous = name; }
     });
     return { cells, weeks, months, summary };
-  }, [payload.data, payload.periodStart]);
+  }, [payload.data, payload.periodStart, today]);
   const selected = selectedDate
     ? view.summary.days.find(day => day.date === selectedDate) ?? null
     : null;
