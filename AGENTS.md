@@ -138,17 +138,26 @@ gate and the filesystem reads.
 
 ## Conventions
 
-- **The React rule sets are scoped to renderer files**, `app/**` and
-  `renderer.tsx`, in [`eslint.config.mjs`](eslint.config.mjs). Applied
-  repo-wide, `react-hooks/rules-of-hooks` treats any `use…` function as a hook,
-  so a main-process helper named `useSomething` failed lint in a file React
-  never loads. Add new renderer directories to `REACT_FILES`, and expect no
-  React linting outside them.
-- **Relative value imports between app modules need an explicit `.ts`
-  extension.** Tests run under `node --experimental-strip-types`, which does not
-  do extensionless resolution. `import type` is erased before the resolver runs,
-  so type-only imports may stay extensionless. `allowImportingTsExtensions` is
-  enabled in `tsconfig.json` for this reason.
+- **The React rule sets are scoped to renderer files under `app/**`** in
+  [`eslint.config.mjs`](eslint.config.mjs). Applied repo-wide,
+  `react-hooks/rules-of-hooks` treats any `use…` function as a hook, so a
+  main-process helper named `useSomething` failed lint in a file React never
+  loads. Add new renderer directories to `REACT_FILES`, and expect no React
+  linting outside them. The renderer entry is [`app/renderer.tsx`](app/renderer.tsx);
+  [`index.html`](index.html) remains at the project root because it is Vite's
+  renderer entry document.
+- **Vite configuration lives under `config/`.** Main and preload builds share
+  [`config/vite.node.config.ts`](config/vite.node.config.ts), while the renderer
+  uses [`config/vite.renderer.config.ts`](config/vite.renderer.config.ts).
+  Keep the explicit paths in [`forge.config.cjs`](forge.config.cjs) and the
+  `config/**/*.ts` inclusion in [`tsconfig.json`](tsconfig.json) in sync if
+  these files move.
+- **Relative value imports between app modules need an explicit TypeScript
+  extension (`.ts` or `.tsx`).** Tests run under
+  `node --experimental-strip-types`, which does not do extensionless resolution.
+  `import type` is erased before the resolver runs, so type-only imports may
+  stay extensionless. `allowImportingTsExtensions` is enabled in `tsconfig.json`
+  for this reason.
 - **`summarizePracticePeriod` takes an injectable `today`.** Always pass a fixed
   date in tests; a test that lets it read the wall clock will rot within a day.
 - **The pnpm version is pinned in `package.json` `packageManager`.** CI reads it
@@ -182,11 +191,7 @@ gate and the filesystem reads.
 
 ## Known open issues
 
-Add new findings here rather than letting them live only in a pull request
-description.
-
-1. **`vite.main.config.ts` and `vite.preload.config.ts` are byte-identical.**
-   Both only mark `electron` external. `forge.config.cjs` could point both
-   builds at a single file.
+None currently. Add new findings here rather than letting them live only in a
+pull request description.
 
 Everything raised by the review that produced this file has been resolved.

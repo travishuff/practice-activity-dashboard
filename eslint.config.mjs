@@ -12,7 +12,7 @@ import tseslint from "typescript-eslint";
  * function as a hook: a main-process helper named useSomething is a lint
  * error, in a file React never loads.
  */
-const REACT_FILES = ["app/**/*.ts", "app/**/*.tsx", "renderer.tsx"];
+const REACT_FILES = ["app/**/*.ts", "app/**/*.tsx"];
 
 export default defineConfig([
   globalIgnores([".next/**", ".vite/**", "dist/**", "out/**", "node_modules/**"]),

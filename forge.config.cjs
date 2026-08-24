@@ -63,17 +63,17 @@ module.exports = {
         build: [
           {
             entry: "electron/main.ts",
-            config: "vite.main.config.ts",
+            config: "config/vite.node.config.ts",
           },
           {
             entry: "electron/preload.ts",
-            config: "vite.preload.config.ts",
+            config: "config/vite.node.config.ts",
           },
         ],
         renderer: [
           {
             name: "main_window",
-            config: "vite.renderer.config.ts",
+            config: "config/vite.renderer.config.ts",
           },
         ],
       },

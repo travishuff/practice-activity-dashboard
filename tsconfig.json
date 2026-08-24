@@ -17,10 +17,8 @@
   "include": [
     "app/**/*.ts",
     "app/**/*.tsx",
-    "electron/**/*.ts",
-    "renderer.tsx",
-    "vite.*.config.ts",
-    "forge.env.d.ts"
+    "config/**/*.ts",
+    "electron/**/*.ts"
   ],
   "exclude": ["node_modules", ".vite", "out", "dist"]
 }
