@@ -31,13 +31,23 @@ function durationText(minutes: number) {
   return [hours, remainingMinutes].filter(Boolean).join(" ");
 }
 
-function DurationValue({ minutes }: { minutes: number }) {
+function ResponsiveUnit({ full, short, enabled }: { full: string; short: string; enabled: boolean }) {
+  if (!enabled) return <span className="duration-unit">{full}</span>;
+  return (
+    <span className="duration-unit">
+      <span className="responsive-unit-long">{full}</span>
+      <span className="responsive-unit-short">{short}</span>
+    </span>
+  );
+}
+
+function DurationValue({ minutes, responsiveUnits = false }: { minutes: number; responsiveUnits?: boolean }) {
   const parts = durationParts(minutes);
   return (
     <>
-      {parts.hours > 0 && <>{parts.hours} <span className="duration-unit">{parts.hours === 1 ? "hour" : "hours"}</span></>}
+      {parts.hours > 0 && <>{parts.hours} <ResponsiveUnit full={parts.hours === 1 ? "hour" : "hours"} short="h" enabled={responsiveUnits} /></>}
       {parts.hours > 0 && parts.minutes > 0 && " "}
-      {(parts.minutes > 0 || !parts.hours) && <>{parts.minutes} <span className="duration-unit">{parts.minutes === 1 ? "minute" : "minutes"}</span></>}
+      {(parts.minutes > 0 || !parts.hours) && <>{parts.minutes} <ResponsiveUnit full={parts.minutes === 1 ? "minute" : "minutes"} short="m" enabled={responsiveUnits} /></>}
     </>
   );
 }
@@ -47,9 +57,9 @@ function dayText(value: number) {
   return `${amount} ${value === 1 ? "day" : "days"}`;
 }
 
-function DayValue({ value }: { value: number }) {
+function DayValue({ value, responsiveUnits = false }: { value: number; responsiveUnits?: boolean }) {
   const amount = Number.isInteger(value) ? String(value) : value.toFixed(1);
-  return <>{amount} <span className="duration-unit">{value === 1 ? "day" : "days"}</span></>;
+  return <>{amount} <ResponsiveUnit full={value === 1 ? "day" : "days"} short="d" enabled={responsiveUnits} /></>;
 }
 
 function isPracticePayload(value: unknown): value is PracticePayload {
@@ -257,8 +267,8 @@ export default function ActivityDashboard({
           </div>
           <div className="split-legend"><small><i className="practiced" />Practice days</small><small><i className="off" />Days off</small><small><i className="future-segment" />Remaining</small><small>365 total</small></div>
         </article>
-        <article className="range-card"><span>Daily practice time <small className="range-title-note">(including 0 minutes for days off)</small></span><RangeChart values={[view.summary.daily.minimum, view.summary.daily.average, view.summary.daily.maximum]} format={durationText} renderValue={value => <DurationValue minutes={value} />} labels={["Shortest", "Average", "Longest"]} /></article>
-        <article className="range-card"><span>Practice streaks</span><RangeChart values={[view.summary.streaks.minimum, view.summary.streaks.average, view.summary.streaks.maximum]} format={dayText} renderValue={value => <DayValue value={value} />} labels={["Shortest", "Average", "Longest"]} /></article>
+        <article className="range-card"><span>Daily practice time <small className="range-title-note">(including 0 minutes for days off)</small></span><RangeChart values={[view.summary.daily.minimum, view.summary.daily.average, view.summary.daily.maximum]} format={durationText} renderValue={value => <DurationValue minutes={value} responsiveUnits />} labels={["Shortest", "Average", "Longest"]} /></article>
+        <article className="range-card"><span>Practice streaks</span><RangeChart values={[view.summary.streaks.minimum, view.summary.streaks.average, view.summary.streaks.maximum]} format={dayText} renderValue={value => <DayValue value={value} responsiveUnits />} labels={["Shortest", "Average", "Longest"]} /></article>
       </section>
       <footer>
         <span>{payload.checkedAt
