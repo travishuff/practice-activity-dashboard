@@ -16,17 +16,22 @@ heatmap and summary that you refresh on demand.
 ## Install on macOS
 
 The release artifact is a universal `.dmg` that works on Apple Silicon and Intel
-Macs.
+Macs. This development build is unsigned, so macOS may ask you to approve it
+the first time it is opened.
 
 1. Open `Practice Activity.dmg`.
 2. Drag **Practice Activity** into **Applications**.
 3. Open the app.
-4. Follow the first-run instructions to share and connect the Practice Log.
+4. If macOS says it cannot verify that **Practice Activity** is free of malware:
 
-This development build is unsigned. The first time it is opened, macOS may say
-it cannot verify the developer. Control-click **Practice Activity** in
-Applications, choose **Open**, then choose **Open** again. Signing and
-notarization can be added later without changing the app architecture.
+   - Click **Done**.
+   - Open **System Settings** and choose **Privacy & Security**.
+   - Scroll to **Security** and click **Open Anyway**.
+   - Authenticate when prompted, then click **Open**.
+
+   The **Open Anyway** button is available for about an hour after the failed
+   launch attempt.
+5. Follow the first-run instructions to **share and connect the Practice Log**.
 
 The installed app includes its own runtime. End users do not need Node.js,
 pnpm, Terminal, or this source repository.
