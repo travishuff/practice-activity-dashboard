@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import {
   calendarDate,
   calendarDateKey,
@@ -15,12 +16,46 @@ import { practiceActivityTitle } from "./user-name";
 import { APP_VERSION } from "./version";
 
 function level(minutes: number) { return minutes === 0 ? 0 : minutes < 60 ? 1 : minutes < 120 ? 2 : minutes < 180 ? 3 : 4; }
-function duration(minutes: number) { const rounded = Math.round(minutes); const h = Math.floor(rounded / 60); const m = rounded % 60; return h ? `${h}h${m ? ` ${m}m` : ""}` : `${m}m`; }
 
-function RangeChart({ values, format, labels }: { values: number[]; format: (value: number, index: number) => string; labels: string[] }) {
+function durationParts(minutes: number) {
+  const rounded = Math.round(minutes);
+  return { hours: Math.floor(rounded / 60), minutes: rounded % 60 };
+}
+
+function durationText(minutes: number) {
+  const parts = durationParts(minutes);
+  const hours = parts.hours ? `${parts.hours} ${parts.hours === 1 ? "hour" : "hours"}` : "";
+  const remainingMinutes = parts.minutes || !parts.hours
+    ? `${parts.minutes} ${parts.minutes === 1 ? "minute" : "minutes"}`
+    : "";
+  return [hours, remainingMinutes].filter(Boolean).join(" ");
+}
+
+function DurationValue({ minutes }: { minutes: number }) {
+  const parts = durationParts(minutes);
+  return (
+    <>
+      {parts.hours > 0 && <>{parts.hours} <span className="duration-unit">{parts.hours === 1 ? "hour" : "hours"}</span></>}
+      {parts.hours > 0 && parts.minutes > 0 && " "}
+      {(parts.minutes > 0 || !parts.hours) && <>{parts.minutes} <span className="duration-unit">{parts.minutes === 1 ? "minute" : "minutes"}</span></>}
+    </>
+  );
+}
+
+function dayText(value: number) {
+  const amount = Number.isInteger(value) ? String(value) : value.toFixed(1);
+  return `${amount} ${value === 1 ? "day" : "days"}`;
+}
+
+function DayValue({ value }: { value: number }) {
+  const amount = Number.isInteger(value) ? String(value) : value.toFixed(1);
+  return <>{amount} <span className="duration-unit">{value === 1 ? "day" : "days"}</span></>;
+}
+
+function RangeChart({ values, format, renderValue, labels }: { values: number[]; format: (value: number, index: number) => string; renderValue?: (value: number, index: number) => ReactNode; labels: string[] }) {
   return (
     <div className="range-chart" role="img" style={{ "--points": values.length } as React.CSSProperties} aria-label={values.map((value, index) => `${labels[index]} ${format(value, index)}`).join(", ")}>
-      <div className="range-values">{values.map((value, index) => <b key={labels[index]}>{format(value, index)}</b>)}</div>
+      <div className="range-values">{values.map((value, index) => <b key={labels[index]}>{renderValue ? renderValue(value, index) : format(value, index)}</b>)}</div>
       <div className="range-line" aria-hidden="true">{values.map((_, index) => <i key={labels[index]} />)}</div>
       <div className="range-labels">{labels.map(label => <small key={label}>{label}</small>)}</div>
     </div>
@@ -64,7 +99,7 @@ export default function ActivityDashboard({
   const [payload, setPayload] = useState<PracticePayload>(initialPayload);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [popover, setPopover] = useState<{ date: string; state: string; items: string[]; x: number; y: number } | null>(null);
+  const [popover, setPopover] = useState<{ date: string; state: string; minutes: number | null; items: string[]; x: number; y: number } | null>(null);
   const appTitle = practiceActivityTitle(userName);
 
   useEffect(() => {
@@ -160,20 +195,20 @@ export default function ActivityDashboard({
             <div className="day-labels"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
             <div className="heatmap">
               {view.cells.map(cell => {
-                const state = !cell.inRange ? "Outside tracking period" : !cell.elapsed ? "Not occurred yet" : cell.minutes ? duration(cell.minutes) : "No practice";
+                const state = !cell.inRange ? "Outside tracking period" : !cell.elapsed ? "Not occurred yet" : cell.minutes ? durationText(cell.minutes) : "No practice";
                 const date = formatCalendarDate(cell.date, { weekday:"long", month:"long", day:"numeric", year:"numeric" });
                 const label = `${date}: ${state}${cell.items.length ? `. Practiced: ${cell.items.join(", ")}` : ""}`;
-                const showPopover = (target: HTMLButtonElement) => { const rect = target.getBoundingClientRect(); setPopover({ date, state, items: cell.items, x: rect.left + rect.width / 2, y: rect.top }); };
+                const showPopover = (target: HTMLButtonElement) => { const rect = target.getBoundingClientRect(); setPopover({ date, state, minutes: cell.inRange && cell.elapsed && cell.minutes ? cell.minutes : null, items: cell.items, x: rect.left + rect.width / 2, y: rect.top }); };
                 return <button key={cell.date} className={`cell level-${level(cell.minutes)} ${cell.inRange ? cell.elapsed ? "" : "future" : "outside"}`} aria-label={label} disabled={!cell.inRange} onMouseEnter={event => showPopover(event.currentTarget)} onMouseLeave={() => setPopover(null)} onFocus={event => showPopover(event.currentTarget)} onBlur={() => setPopover(null)} onClick={() => setSelectedDate(cell.date)} />;
               })}
             </div>
           </div>
         </div>
-        {popover && <div className="cell-popover" style={{ left: popover.x, top: popover.y }} role="tooltip"><b>{popover.date}</b><span>{popover.state}</span>{popover.items.length > 0 && <ul>{popover.items.map(item => <li key={item}>{item}</li>)}</ul>}</div>}
-        <div className="card-foot"><p>{selected ? <><b>{formatCalendarDate(selected.date, { month:"long", day:"numeric", year:"numeric" })}</b><span>{!selected.elapsed ? "Not occurred yet" : selected.minutes ? duration(selected.minutes) : "No practice recorded"}</span></> : <span>Select a day to see its total</span>}</p><div className="legend"><span>Less</span>{[0,1,2,3,4].map(n => <i key={n} className={`cell level-${n}`} />)}<span>More</span></div></div>
+        {popover && <div className="cell-popover" style={{ left: popover.x, top: popover.y }} role="tooltip"><b>{popover.date}</b><span>{popover.minutes === null ? popover.state : <DurationValue minutes={popover.minutes} />}</span>{popover.items.length > 0 && <ul>{popover.items.map(item => <li key={item}>{item}</li>)}</ul>}</div>}
+        <div className="card-foot"><p>{selected ? <><b>{formatCalendarDate(selected.date, { month:"long", day:"numeric", year:"numeric" })}</b><span>{!selected.elapsed ? "Not occurred yet" : selected.minutes ? <DurationValue minutes={selected.minutes} /> : "No practice recorded"}</span></> : <span>Select a day to see its total</span>}</p><div className="legend"><span>Less</span>{[0,1,2,3,4].map(n => <i key={n} className={`cell level-${n}`} />)}<span>More</span></div></div>
       </section>
       <section className="stats" aria-label="Practice summary">
-        <article className="total-card"><span>Total practice time</span><strong>{duration(payload.totalHours * 60)}</strong></article>
+        <article className="total-card"><span>Total practice time</span><strong><DurationValue minutes={payload.totalHours * 60} /></strong></article>
         <article className="split-card">
           <span>365-day activity</span>
           <div className="split-values"><strong>{view.summary.practiceDays}<small> practiced</small></strong><strong>{view.summary.daysOff}<small> off</small></strong><strong>{view.summary.remainingDays}<small> remaining</small></strong></div>
@@ -185,15 +220,12 @@ export default function ActivityDashboard({
           <div className="split-legend"><small><i className="practiced" />Practice days</small><small><i className="off" />Days off</small><small><i className="future-segment" />Remaining</small><small>365 total</small></div>
         </article>
         <article className="range-card">
-            <span>Daily practice range</span>
-            <RangeChart values={[view.summary.daily.minimum, view.summary.daily.maximum]} format={duration} labels={["Shortest", "Longest"]} />
-            <small className="range-note">
-              Average <b>{duration(view.summary.daily.average)}</b> across all {view.summary.elapsedDays} days so far · range covers the {view.summary.practiceDays} days with practice
-            </small>
+            <span>Daily practice time <small className="range-title-note">(including 0 minutes for days off)</small></span>
+            <RangeChart values={[view.summary.daily.minimum, view.summary.daily.average, view.summary.daily.maximum]} format={durationText} renderValue={value => <DurationValue minutes={value} />} labels={["Shortest", "Average", "Longest"]} />
           </article>
         <article className="range-card">
             <span>Practice streaks</span>
-            <RangeChart values={[view.summary.streaks.minimum, view.summary.streaks.average, view.summary.streaks.maximum]} format={value => `${Number.isInteger(value) ? value : value.toFixed(1)}d`} labels={["Shortest", "Average", "Longest"]} />
+            <RangeChart values={[view.summary.streaks.minimum, view.summary.streaks.average, view.summary.streaks.maximum]} format={dayText} renderValue={value => <DayValue value={value} />} labels={["Shortest", "Average", "Longest"]} />
           </article>
       </section>
       <footer>
