@@ -540,13 +540,19 @@ button:disabled {
 }
 
 .cell-popover b,
-.cell-popover span {
+.cell-popover > span {
   display: block;
 }
 
-.cell-popover span {
+.cell-popover > span {
   margin-top: 2px;
   color: #cfd5d1;
+}
+
+.duration-unit {
+  display: inline;
+  font-size: 0.8em;
+  letter-spacing: normal;
 }
 
 .cell-popover ul {
@@ -635,6 +641,7 @@ button:disabled {
 .range-values b {
   font-size: 18px;
   letter-spacing: -0.04em;
+  white-space: nowrap;
 }
 
 .range-values b:nth-child(2):not(:last-child),
@@ -680,16 +687,28 @@ button:disabled {
   background: var(--accent);
 }
 
-.range-note {
-  margin-top: 12px;
-  color: var(--muted);
+.range-title-note {
   font-size: 11px;
-  line-height: 1.45;
+  letter-spacing: normal;
+  text-transform: lowercase;
 }
 
-.range-note b {
-  color: var(--ink);
-  font-weight: 700;
+.range-card {
+  container-type: inline-size;
+}
+
+.responsive-unit-short {
+  display: none;
+}
+
+@container (max-width: 420px) {
+  .range-card .responsive-unit-long {
+    display: none;
+  }
+
+  .range-card .responsive-unit-short {
+    display: inline;
+  }
 }
 
 .range-labels small {
