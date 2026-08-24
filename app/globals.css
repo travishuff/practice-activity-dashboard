@@ -641,6 +641,7 @@ button:disabled {
 .range-values b {
   font-size: 18px;
   letter-spacing: -0.04em;
+  white-space: nowrap;
 }
 
 .range-values b:nth-child(2):not(:last-child),
@@ -690,6 +691,24 @@ button:disabled {
   font-size: 11px;
   letter-spacing: normal;
   text-transform: lowercase;
+}
+
+.range-card {
+  container-type: inline-size;
+}
+
+.responsive-unit-short {
+  display: none;
+}
+
+@container (max-width: 420px) {
+  .range-card .responsive-unit-long {
+    display: none;
+  }
+
+  .range-card .responsive-unit-short {
+    display: inline;
+  }
 }
 
 .range-labels small {
