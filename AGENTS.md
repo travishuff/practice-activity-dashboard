@@ -172,8 +172,12 @@ gate and the filesystem reads.
   push to `main` and every pull request, against Node 22 (the `engines` floor)
   and Node 24. CI sets `ELECTRON_SKIP_BINARY_DOWNLOAD=1`: the gates need
   Electron's bundled type definitions but never its platform binary, because
-  nothing the tests import reaches `electron/`. Packaging is **not** covered —
-  `pnpm package` remains a local check.
+  nothing the tests import reaches `electron/`. Pull-request CI does not
+  package the app; the release workflow builds the macOS and Windows installers
+  on native runners when a version tag is pushed. Before upload, the Windows
+  runner silently installs the Setup EXE, launches the installed app with
+  `--installer-smoke-test`, verifies the first-time setup screen loads, and
+  uninstalls it. Keep that flag and `scripts/test-windows-installer.ps1` in sync.
 
 ## Invariants worth not breaking
 

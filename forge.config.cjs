@@ -55,6 +55,16 @@ module.exports = {
       name: "@electron-forge/maker-zip",
       platforms: ["darwin"],
     },
+    {
+      name: "@electron-forge/maker-squirrel",
+      platforms: ["win32"],
+      config: {
+        authors: "Travis Huff",
+        iconUrl: "https://raw.githubusercontent.com/travishuff/practice-activity-dashboard/main/assets/app-icon.ico",
+        setupExe: "Practice Activity Setup.exe",
+        setupIcon: path.resolve(__dirname, "assets/app-icon.ico"),
+      },
+    },
   ],
   plugins: [
     {

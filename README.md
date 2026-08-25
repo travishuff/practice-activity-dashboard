@@ -9,7 +9,7 @@
 This universal installer works on both Apple Silicon and Intel Macs. You can
 also [view all releases](https://github.com/travishuff/practice-activity-dashboard/releases).
 
-Practice Activity is a macOS desktop dashboard for the Mark Walker Practice Log.
+Practice Activity is a desktop dashboard for the Mark Walker Practice Log.
 It reads the existing Google Sheets layout and displays a 365-day practice
 heatmap and summary that you refresh on demand.
 
@@ -36,6 +36,31 @@ the first time it is opened.
 The installed app includes its own runtime. End users do not need Node.js,
 pnpm, Terminal, or this source repository.
 
+## Install on Windows
+
+The release artifact is a 64-bit Windows Setup executable. This development
+build is unsigned, so Microsoft Defender SmartScreen may show a warning the
+first time it is opened.
+
+1. Open the
+   [GitHub Releases page](https://github.com/travishuff/practice-activity-dashboard/releases)
+   and download `Practice-Activity-v<version>-Windows-x64-Setup.exe`.
+2. Open the downloaded Setup executable.
+3. If Microsoft Defender SmartScreen says it prevented an unrecognized app
+   from starting:
+
+   - Click **More info**.
+   - Confirm the publisher is **Unknown publisher** and that you downloaded the
+     installer from this repository.
+   - Click **Run anyway**.
+
+4. Wait for installation to finish. Practice Activity should open
+   automatically; if it does not, open it from the **Start** menu.
+5. Follow the first-run instructions to **share and connect the Practice Log**.
+
+The installed app includes its own runtime. End users do not need Node.js,
+pnpm, PowerShell, or this source repository.
+
 ## Connect a Practice Log
 
 During first-run setup, the app explains how to make the Google Sheet readable:
@@ -55,9 +80,9 @@ Viewer access does not allow them to edit it. Some managed Google Workspace
 accounts may prevent link sharing.
 
 Use **Change Practice Log** in the app to connect a different sheet. Settings and
-the most recent successful response are stored in the current macOS user's
-Application Support directory. Cached data is associated with its exact sheet
-URL so data from a previous sheet is never used for a new one.
+the most recent successful response are stored in the current user's app data
+directory. Cached data is associated with its exact sheet URL so data from a
+previous sheet is never used for a new one.
 
 Use **Refresh** above the heatmap whenever you want to load the latest changes
 from Google Sheets. The dashboard does not refresh automatically.
@@ -133,10 +158,12 @@ pnpm package
 ```
 
 The first three run in CI on every push to `main` and every pull request,
-against Node 22 and Node 24. Packaging is not covered there and stays a local
-check.
+against Node 22 and Node 24. Installer packaging runs in the release workflow
+when a version tag is pushed.
 
-## Build the macOS installer
+## Build installers locally
+
+### macOS
 
 Build a universal unsigned DMG and ZIP on a Mac:
 
@@ -152,25 +179,46 @@ For a faster architecture-specific local build:
 pnpm make
 ```
 
+### Windows
+
+Build an unsigned 64-bit Setup executable on Windows:
+
+```bash
+pnpm make:win
+```
+
+Squirrel writes the installer and its supporting package files under
+`out/make/squirrel.windows/x64/`.
+
 ## Release versioning
 
-Every newly published DMG is a release. Releases use [Semantic Versioning](https://semver.org/)
-from `package.json` and matching Git tags such as `v0.1.0`:
+Every published version includes a macOS DMG and a 64-bit Windows Setup
+executable. Releases use [Semantic Versioning](https://semver.org/) from
+`package.json` and matching Git tags such as `v1.1.0`:
 
 - patch (`0.1.1`) for fixes that do not change expected behavior
 - minor (`0.2.0`) for new backward-compatible features
 - major (`1.0.0`) for incompatible changes; `1.0.0` also marks the first stable release
 
-After setting the version in `package.json`, build the publishable artifacts with:
+After setting the version in `package.json`, commit the change and push its
+matching tag:
 
 ```bash
-pnpm release:mac
+git tag v<version>
+git push origin v<version>
 ```
 
-This produces a versioned universal DMG and SHA-256 checksum under
-`out/release/v<version>/`. The release is published with the matching
-`v<version>` Git tag and both files are uploaded to GitHub Releases. Release
-artifacts under `out/` are generated files and are not committed to Git.
+The release workflow builds on native macOS and Windows runners, creates the
+GitHub Release, and uploads both installers plus their SHA-256 checksum files.
+It rejects a tag that does not match the version in `package.json`. Before a
+Windows installer can be uploaded, the workflow installs it silently, launches
+the installed dashboard, verifies that first-time setup renders, uninstalls the
+app, and checks that its registration and shortcuts were removed.
+
+To prepare the same versioned artifacts locally, use `pnpm release:mac` on
+macOS or `pnpm release:win` on Windows. They are written under
+`out/release/v<version>/`; everything under `out/` is generated and is not
+committed to Git.
 
 ## Architecture
 

@@ -1,0 +1,92 @@
+name: Release installers
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.label }} installer
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: macOS
+            os: macos-latest
+            command: pnpm release:mac
+            artifact: macos-installer
+          - label: Windows
+            os: windows-latest
+            command: pnpm release:win
+            artifact: windows-installer
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build release artifacts
+        run: ${{ matrix.command }}
+
+      - name: Test Windows installer end to end
+        if: matrix.label == 'Windows'
+        shell: pwsh
+        run: |
+          $installers = @(
+            Get-ChildItem `
+              -Path "out/release" `
+              -Filter "*-Windows-x64-Setup.exe" `
+              -File `
+              -Recurse
+          )
+          if ($installers.Count -ne 1) {
+            throw "Expected one Windows installer, found $($installers.Count)"
+          }
+          ./scripts/test-windows-installer.ps1 -InstallerPath $installers[0].FullName
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: out/release/v*/*
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download installers
+        uses: actions/download-artifact@v8
+        with:
+          pattern: "*-installer"
+          path: release-assets
+          merge-multiple: true
+
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" release-assets/* --verify-tag --generate-notes
+          fi
