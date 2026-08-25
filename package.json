@@ -1,7 +1,7 @@
 {
   "name": "practice-activity",
   "productName": "Practice Activity",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A desktop dashboard for the Mark Walker Practice Log.",
   "private": true,
   "main": ".vite/build/main.js",
