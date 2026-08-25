@@ -2,12 +2,15 @@
 
 [![CI](https://github.com/travishuff/practice-activity-dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/travishuff/practice-activity-dashboard/actions/workflows/ci.yml)
 
-## ⬇️ Download the macOS installer
+## Download the installer
 
-[**Download Practice Activity v1.0.0 for macOS (.dmg) →**](https://github.com/travishuff/practice-activity-dashboard/releases/download/v1.0.0/Practice-Activity-v1.0.0-macOS-universal.dmg)
+[**Download Practice Activity v1.1.0 for macOS (.dmg) →**](https://github.com/travishuff/practice-activity-dashboard/releases/download/v1.1.0/Practice-Activity-v1.1.0-macOS-universal.dmg)
 
-This universal installer works on both Apple Silicon and Intel Macs. You can
-also [view all releases](https://github.com/travishuff/practice-activity-dashboard/releases).
+[**Download Practice Activity v1.1.0 for Windows (.exe) →**](https://github.com/travishuff/practice-activity-dashboard/releases/download/v1.1.0/Practice-Activity-v1.1.0-Windows-x64-Setup.exe)
+
+The macOS installer works on both Apple Silicon and Intel Macs. The Windows
+installer works on 64-bit PCs. You can also
+[view all releases](https://github.com/travishuff/practice-activity-dashboard/releases).
 
 Practice Activity is a desktop dashboard for the Mark Walker Practice Log.
 It reads the existing Google Sheets layout and displays a 365-day practice
