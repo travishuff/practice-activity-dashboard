@@ -1,24 +1,37 @@
 import { snapshot, snapshotPeriodStart, snapshotTotalHours } from "../../practice-data";
-import { createFallbackPayload, fetchPracticePayload } from "../../practice-sheet";
+import { DEFAULT_PRACTICE_LOG_URL } from "../../practice-sources";
+import {
+  buildSheetDataFeed,
+  createFallbackPayload,
+  fetchPracticePayload,
+  normalizePracticeLogUrl,
+  PracticeSheetError,
+} from "../../practice-sheet";
 
-const BASE_FEED = "https://docs.google.com/spreadsheets/d/1oR05zGWqdEKNy1smZL2tV0WTp2uSknmo9p5riec1y7g/gviz/tq?tqx=out:json&gid=0";
-const DATA_FEED = `${BASE_FEED}&range=A:E`;
 const NO_STORE = { "cache-control": "no-store, max-age=0" };
 
-export async function GET() {
+export async function GET(request: Request) {
+  const requestedUrl = new URL(request.url).searchParams.get("url")
+    ?? DEFAULT_PRACTICE_LOG_URL;
+  let normalizedUrl: string | null = null;
+
   try {
-    const payload = await fetchPracticePayload(fetch, DATA_FEED);
+    normalizedUrl = normalizePracticeLogUrl(requestedUrl);
+    const payload = await fetchPracticePayload(fetch, buildSheetDataFeed(normalizedUrl));
     if (payload.warnings.length) console.warn("Practice sheet data warnings", payload.warnings);
     return Response.json(payload, { headers: NO_STORE });
   } catch (error) {
     console.error("Practice sheet refresh failed", error);
+    const useSnapshot = normalizedUrl === DEFAULT_PRACTICE_LOG_URL;
     return Response.json(createFallbackPayload(
       error,
-      snapshot,
-      snapshotTotalHours,
-      snapshotPeriodStart,
+      useSnapshot ? snapshot : [],
+      useSnapshot ? snapshotTotalHours : 0,
+      useSnapshot ? snapshotPeriodStart : null,
     ), {
-      status: 502,
+      status: error instanceof PracticeSheetError && error.code === "invalid_source"
+        ? 400
+        : 502,
       headers: NO_STORE,
     });
   }

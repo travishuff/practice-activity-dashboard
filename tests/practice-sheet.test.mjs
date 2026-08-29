@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildSheetDataFeed,
   createFallbackPayload,
   fetchPracticePayload,
+  normalizePracticeLogUrl,
   parseGvizRows,
   parsePracticeDays,
   PracticeSheetError,
@@ -112,4 +114,23 @@ test("fallback responses expose a degraded state instead of claiming success", (
     error: { code: "source_unavailable", message: "The live sheet is temporarily unavailable" },
     warnings: [],
   });
+});
+
+test("Google Sheets URLs are normalized and converted to a bounded data feed", () => {
+  assert.equal(
+    normalizePracticeLogUrl("https://docs.google.com/spreadsheets/d/example-sheet/edit#gid=42"),
+    "https://docs.google.com/spreadsheets/d/example-sheet/edit?gid=42",
+  );
+  assert.equal(
+    buildSheetDataFeed("https://docs.google.com/spreadsheets/d/example-sheet/edit?usp=sharing&gid=7"),
+    "https://docs.google.com/spreadsheets/d/example-sheet/gviz/tq?tqx=out:json&gid=7&range=A:E",
+  );
+  assert.throws(
+    () => normalizePracticeLogUrl("https://example.com/spreadsheets/d/not-google/edit"),
+    error => error instanceof PracticeSheetError && error.code === "invalid_source",
+  );
+  assert.throws(
+    () => normalizePracticeLogUrl("https://docs.google.com/spreadsheets/d/example/edit?gid=not-a-number"),
+    error => error instanceof PracticeSheetError && error.code === "invalid_source",
+  );
 });

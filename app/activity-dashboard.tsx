@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { FormEvent, ReactNode } from "react";
 import {
   calendarDate,
   calendarDateKey,
@@ -12,7 +12,18 @@ import {
 import type { PracticeDay } from "./practice-data";
 import { summarizePracticePeriod } from "./practice-metrics";
 import { formatRefreshedAt } from "./refresh-status";
-import type { PracticePayload } from "./practice-sheet";
+import {
+  ACTIVE_PRACTICE_SOURCE_STORAGE_KEY,
+  DEFAULT_PRACTICE_LOG_URL,
+  parseSavedPracticeSources,
+  PRACTICE_SOURCES_STORAGE_KEY,
+  practiceSourceLabel,
+  removePracticeSource,
+  resolveSavedPracticeSource,
+  type PracticeSource,
+  upsertPracticeSource,
+} from "./practice-sources.ts";
+import { normalizePracticeLogUrl, type PracticePayload } from "./practice-sheet";
 import { APP_VERSION } from "./version";
 
 function level(minutes: number) { return minutes === 0 ? 0 : minutes < 60 ? 1 : minutes < 120 ? 2 : minutes < 180 ? 3 : 4; }
@@ -131,26 +142,52 @@ export default function ActivityDashboard({
   const [payload, setPayload] = useState<PracticePayload | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const refreshingRef = useRef(false);
+  const [sources, setSources] = useState<PracticeSource[]>(() => [{
+    url: DEFAULT_PRACTICE_LOG_URL,
+    periodStart: initialPeriodStart,
+  }]);
+  const [activeSourceUrl, setActiveSourceUrl] = useState(DEFAULT_PRACTICE_LOG_URL);
+  const [storageReady, setStorageReady] = useState(false);
+  const [showSourceForm, setShowSourceForm] = useState(false);
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [sourceError, setSourceError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [popover, setPopover] = useState<{ date: string; state: string; minutes: number | null; items: string[]; x: number; y: number } | null>(null);
 
-  const refresh = useCallback(async () => {
+  const loadPracticeSource = useCallback(async (requestedUrl: string) => {
     if (refreshingRef.current) return;
     refreshingRef.current = true;
     setIsRefreshing(true);
+    setSourceError(null);
     try {
-      const response = await fetch("/api/practice", { cache: "no-store" });
+      const normalizedUrl = normalizePracticeLogUrl(requestedUrl);
+      const response = await fetch(
+        `/api/practice?url=${encodeURIComponent(normalizedUrl)}`,
+        { cache: "no-store" },
+      );
       const next: unknown = await response.json();
-      if (!isPracticePayload(next) || (!response.ok && next.live)) throw new Error("Invalid practice response");
-      setPayload(current => next.live || current === null
-        ? next
-        : { ...current, live: false, error: next.error });
-    } catch {
+      if (!isPracticePayload(next)) throw new Error("The Practice Log returned an invalid response");
+      if (!response.ok || !next.live || !next.periodStart) {
+        throw new Error(next.error?.message ?? "The Practice Log could not be loaded");
+      }
+
+      setPayload(next);
+      setSources(current => upsertPracticeSource(current, {
+        url: normalizedUrl,
+        periodStart: next.periodStart as string,
+      }));
+      setActiveSourceUrl(normalizedUrl);
+      setSelectedDate(null);
+      setPopover(null);
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Data refresh failed";
+      setSourceError(message);
       setPayload(current => current
         ? {
             ...current,
             live: false,
-            error: { code: "refresh_failed", message: "Data refresh failed" },
+            error: { code: "refresh_failed", message },
           }
         : {
             data: initial,
@@ -158,9 +195,10 @@ export default function ActivityDashboard({
             totalHours: initialTotalHours,
             live: false,
             checkedAt: null,
-            error: { code: "refresh_failed", message: "Data refresh failed" },
+            error: { code: "refresh_failed", message },
             warnings: [],
           });
+      return false;
     } finally {
       refreshingRef.current = false;
       setIsRefreshing(false);
@@ -168,9 +206,66 @@ export default function ActivityDashboard({
   }, [initial, initialPeriodStart, initialTotalHours]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void refresh(), 0);
+    const fallback = {
+      url: DEFAULT_PRACTICE_LOG_URL,
+      periodStart: initialPeriodStart,
+    };
+    let restored = [fallback];
+    let selectedUrl = DEFAULT_PRACTICE_LOG_URL;
+    try {
+      restored = parseSavedPracticeSources(
+        window.localStorage.getItem(PRACTICE_SOURCES_STORAGE_KEY),
+        fallback,
+      );
+      selectedUrl = resolveSavedPracticeSource(
+        restored,
+        window.localStorage.getItem(ACTIVE_PRACTICE_SOURCE_STORAGE_KEY),
+        DEFAULT_PRACTICE_LOG_URL,
+      );
+    } catch {
+      // Browser storage is an optional convenience; the default source still works.
+    }
+    const timer = window.setTimeout(() => {
+      setSources(restored);
+      setActiveSourceUrl(selectedUrl);
+      setStorageReady(true);
+      void loadPracticeSource(selectedUrl);
+    }, 0);
     return () => window.clearTimeout(timer);
-  }, [refresh]);
+  }, [initialPeriodStart, loadPracticeSource]);
+
+  useEffect(() => {
+    if (!storageReady) return;
+    try {
+      window.localStorage.setItem(PRACTICE_SOURCES_STORAGE_KEY, JSON.stringify(sources));
+      window.localStorage.setItem(ACTIVE_PRACTICE_SOURCE_STORAGE_KEY, activeSourceUrl);
+    } catch {
+      // Keep the active session working even when local storage is unavailable.
+    }
+  }, [activeSourceUrl, sources, storageReady]);
+
+  const addPracticeSource = async (event: FormEvent) => {
+    event.preventDefault();
+    const added = await loadPracticeSource(sourceUrl);
+    if (!added) return;
+    setSourceUrl("");
+    setShowSourceForm(false);
+  };
+
+  const removeActiveSource = async () => {
+    if (activeSourceUrl === DEFAULT_PRACTICE_LOG_URL || sources.length <= 1) return;
+
+    const activeIndex = sources.findIndex(source => source.url === activeSourceUrl);
+    const remaining = removePracticeSource(sources, activeSourceUrl);
+    const nextSource = remaining[Math.min(Math.max(activeIndex, 0), remaining.length - 1)]
+      ?? remaining[0];
+    if (!nextSource) return;
+
+    setSources(remaining);
+    setActiveSourceUrl(nextSource.url);
+    setSourceError(null);
+    await loadPracticeSource(nextSource.url);
+  };
 
   const view = useMemo(() => {
     if (!payload) return null;
@@ -222,15 +317,96 @@ export default function ActivityDashboard({
         : "Refresh";
   const refreshTitle = payload.error?.message
     ?? (payload.warnings.length ? payload.warnings.join("\n") : "Refresh practice data from Google Sheets");
+  const activeSource = sources.find(source => source.url === activeSourceUrl);
+  const canRemoveActiveSource = sources.length > 1
+    && activeSourceUrl !== DEFAULT_PRACTICE_LOG_URL;
   return (
     <main className="shell">
       <header className="topbar">
         <a className="brand" href="#activity" aria-label="Practice activity home"><span className="brand-mark">PA</span><span className="brand-title">Practice Activity: Travis Huff</span></a>
+        <div className="source-controls">
+          {sources.length > 1 && (
+            <label className="source-picker">
+              <span>Practice year</span>
+              <select
+                value={activeSourceUrl}
+                onChange={event => void loadPracticeSource(event.target.value)}
+                disabled={isRefreshing}
+                aria-label="Practice Log date range"
+              >
+                {sources.map(source => (
+                  <option key={source.url} value={source.url}>
+                    {practiceSourceLabel(source)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {sources.length > 1 && (
+            <button
+              className="source-remove"
+              type="button"
+              onClick={() => void removeActiveSource()}
+              disabled={isRefreshing || !canRemoveActiveSource}
+              aria-label={canRemoveActiveSource && activeSource
+                ? `Remove Practice Log for ${practiceSourceLabel(activeSource)}`
+                : "The original Practice Log cannot be removed"}
+              title={canRemoveActiveSource && activeSource
+                ? `Remove ${practiceSourceLabel(activeSource)}`
+                : "The original Practice Log is always available"}
+            >
+              Remove
+            </button>
+          )}
+          <button
+            className="source-button"
+            type="button"
+            onClick={() => {
+              setSourceError(null);
+              setShowSourceForm(current => !current);
+            }}
+            disabled={isRefreshing}
+            aria-expanded={showSourceForm}
+            aria-controls="practice-source-form"
+          >
+            <span aria-hidden="true">＋</span> Add Practice Log
+          </button>
+        </div>
       </header>
+      {showSourceForm && (
+        <form className="source-panel" id="practice-source-form" onSubmit={event => void addPracticeSource(event)}>
+          <div>
+            <label htmlFor="practice-log-url">Google Sheets URL</label>
+            <p>Add a public Practice Log. Its date range will become the name shown in the selector.</p>
+          </div>
+          <div className="source-entry">
+            <input
+              id="practice-log-url"
+              type="url"
+              required
+              autoComplete="off"
+              maxLength={2_048}
+              placeholder="https://docs.google.com/spreadsheets/d/…"
+              value={sourceUrl}
+              onChange={event => setSourceUrl(event.target.value)}
+              aria-describedby={sourceError ? "practice-source-error" : "practice-source-hint"}
+            />
+            <button className="source-submit" type="submit" disabled={isRefreshing}>
+              {isRefreshing ? "Checking…" : "Add & view"}
+            </button>
+            <button className="source-cancel" type="button" onClick={() => setShowSourceForm(false)} disabled={isRefreshing}>
+              Cancel
+            </button>
+            {sourceError
+              ? <small className="source-error" id="practice-source-error" role="alert">{sourceError}</small>
+              : <small id="practice-source-hint">The sheet must be shared as Anyone with the link · Viewer.</small>}
+          </div>
+        </form>
+      )}
       <section className="activity-card" id="activity">
         <div className="card-head">
           <div><h2>Daily practice</h2><p>Color intensity represents total minutes practiced.</p></div>
-          <div className="card-status"><span>{view.summary.days[0].date.slice(0,4)}—{view.summary.days[view.summary.days.length - 1].date.slice(0,4)}</span><button className="refresh-button" type="button" onClick={() => void refresh()} disabled={isRefreshing} aria-busy={isRefreshing} title={refreshTitle}><i className={isRefreshing ? "is-spinning" : ""} aria-hidden="true">↻</i>{refreshLabel}</button></div>
+          <div className="card-status"><span>{view.summary.days[0].date.slice(0,4)}—{view.summary.days[view.summary.days.length - 1].date.slice(0,4)}</span><button className="refresh-button" type="button" onClick={() => void loadPracticeSource(activeSourceUrl)} disabled={isRefreshing} aria-busy={isRefreshing} title={refreshTitle}><i className={isRefreshing ? "is-spinning" : ""} aria-hidden="true">↻</i>{refreshLabel}</button></div>
         </div>
         {payload.error && !isRefreshing && <p className="refresh-error" role="alert">{payload.error.message}</p>}
         <div className="chart-scroll">

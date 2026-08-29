@@ -27,6 +27,22 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+button,
+input,
+select {
+  font: inherit;
+}
+
+button,
+select {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled {
+  cursor: wait;
+}
+
 .loading-shell {
   min-height: 100vh;
   display: grid;
@@ -93,6 +109,170 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.source-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.source-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.source-picker > span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.source-picker select,
+.source-button,
+.source-remove,
+.source-submit,
+.source-cancel {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.source-picker select {
+  max-width: 265px;
+  padding: 0 34px 0 12px;
+}
+
+.source-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 13px;
+}
+
+.source-remove {
+  padding: 0 12px;
+  color: var(--muted);
+}
+
+.source-button span {
+  color: var(--accent);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.source-button:hover:not(:disabled),
+.source-button:focus-visible,
+.source-picker select:focus-visible,
+.source-cancel:hover:not(:disabled),
+.source-cancel:focus-visible {
+  border-color: var(--accent);
+  outline: 0;
+  color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(223, 100, 20, 0.1);
+}
+
+.source-remove:hover:not(:disabled),
+.source-remove:focus-visible {
+  border-color: #c65a46;
+  outline: 0;
+  color: #a63721;
+  box-shadow: 0 0 0 3px rgba(166, 55, 33, 0.1);
+}
+
+.source-controls :disabled {
+  opacity: 0.65;
+}
+
+.source-remove:disabled {
+  cursor: not-allowed;
+}
+
+.source-panel {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.65fr) minmax(320px, 1.35fr);
+  gap: 24px;
+  margin-top: 20px;
+  padding: 20px 22px;
+  border: 1px solid #f0c9ae;
+  border-radius: 16px;
+  background: #fff9f5;
+  box-shadow: 0 14px 34px rgba(72, 42, 23, 0.055);
+}
+
+.source-panel label {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.source-panel p {
+  max-width: 370px;
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.source-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+}
+
+.source-entry input {
+  min-width: 0;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid #cbd2cd;
+  border-radius: 10px;
+  outline: 0;
+  background: #fff;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.source-entry input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(223, 100, 20, 0.12);
+}
+
+.source-submit,
+.source-cancel {
+  padding: 0 13px;
+}
+
+.source-submit {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.source-submit:hover:not(:disabled),
+.source-submit:focus-visible {
+  outline: 0;
+  background: #c9540b;
+  box-shadow: 0 0 0 3px rgba(223, 100, 20, 0.14);
+}
+
+.source-entry small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.source-entry .source-error {
+  color: #a63721;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .refresh-button {
@@ -620,11 +800,63 @@ footer small {
   }
 
   .topbar {
-    height: 70px;
+    min-height: 70px;
+    height: auto;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px 0;
   }
 
   .brand {
     font-size: 14px;
+  }
+
+  .source-controls {
+    width: 100%;
+    align-items: stretch;
+    margin-left: 0;
+  }
+
+  .source-picker {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .source-picker > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .source-picker select {
+    width: 100%;
+    max-width: none;
+  }
+
+  .source-button {
+    flex: 0 0 auto;
+  }
+
+  .source-button > span {
+    display: none;
+  }
+
+  .source-panel {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin-top: 16px;
+    padding: 18px 16px;
+  }
+
+  .source-entry {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .source-entry input {
+    grid-column: 1 / -1;
   }
 
   .activity-card {
