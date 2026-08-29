@@ -104,6 +104,53 @@ test("a trailing totals row is reported rather than silently swallowing practice
   ]);
 });
 
+test("structural source errors fail closed instead of producing misleading totals", () => {
+  const cases = [
+    {
+      name: "duplicate day number",
+      rows: [
+        row([1, ["Date(2025,8,7)", "9-7-25"]]),
+        row([1, ["Date(2025,8,7)", "9-7-25"]]),
+      ],
+      message: "Day 1 appears more than once",
+    },
+    {
+      name: "calendar date that disagrees with the day number",
+      rows: [
+        row([1, ["Date(2025,8,7)", "9-7-25"]]),
+        row([2, ["Date(2025,8,9)", "9-9-25"]]),
+      ],
+      message: "Day 2 does not match its calendar date",
+    },
+    {
+      name: "invalid calendar date",
+      rows: [
+        row([1, ["Date(2025,8,7)", "9-7-25"]]),
+        row([2, ["Date(2025,8,31)", "9-31-25"]]),
+      ],
+      message: "Day 2 has an invalid date",
+    },
+    {
+      name: "negative practice time",
+      rows: [
+        row([1, ["Date(2025,8,7)", "9-7-25"]]),
+        row([null, null, "Bad entry", null, -15]),
+      ],
+      message: "Day 1 contains negative practice time",
+    },
+  ];
+
+  for (const scenario of cases) {
+    assert.throws(
+      () => parsePracticeDays(scenario.rows),
+      error => error instanceof PracticeSheetError
+        && error.code === "invalid_source"
+        && error.message === scenario.message,
+      scenario.name,
+    );
+  }
+});
+
 test("repeated identical anomalies collapse into one warning", () => {
   const rows = [
     row([1, ["Date(2025,8,7)", "9-7-25"]]),
