@@ -174,6 +174,34 @@ export function calculateTotalHours(data: PracticeDay[]) {
   return data.reduce((sum, day) => sum + day.minutes, 0) / 60;
 }
 
+export function normalizePracticeLogUrl(sheetUrl: string) {
+  let url: URL;
+  try {
+    url = new URL(sheetUrl.trim());
+  } catch {
+    throw new PracticeSheetError("invalid_source", "Enter a valid Google Sheets sharing URL");
+  }
+
+  const id = url.pathname.match(/^\/spreadsheets\/d\/([A-Za-z0-9_-]+)(?:\/|$)/)?.[1];
+  const hash = new URLSearchParams(url.hash.replace(/^#/, ""));
+  const gid = url.searchParams.get("gid") ?? hash.get("gid") ?? "0";
+  if (url.hostname !== "docs.google.com" || !id || !/^\d+$/.test(gid)) {
+    throw new PracticeSheetError(
+      "invalid_source",
+      "The URL must point to a worksheet in Google Sheets",
+    );
+  }
+
+  return `https://docs.google.com/spreadsheets/d/${id}/edit?gid=${gid}`;
+}
+
+export function buildSheetDataFeed(sheetUrl: string) {
+  const normalized = new URL(normalizePracticeLogUrl(sheetUrl));
+  const id = normalized.pathname.split("/")[3];
+  const gid = normalized.searchParams.get("gid") ?? "0";
+  return `https://docs.google.com/spreadsheets/d/${encodeURIComponent(id)}/gviz/tq?tqx=out:json&gid=${encodeURIComponent(gid)}&range=A:E`;
+}
+
 export async function fetchPracticePayload(
   fetcher: typeof fetch,
   dataUrl: string,
