@@ -3,19 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
-  calendarDate,
-  calendarDateKey,
-  DAY,
   formatCalendarDate,
   localCalendarDateKey,
 } from "./calendar-date";
+import { buildActivityView, practiceLevel } from "./activity-view.ts";
 import { formatRefreshedAt } from "./refresh-status";
-import { summarizePracticePeriod } from "./practice-metrics";
 import type { PracticePayload } from "./practice-sheet";
 import { practiceActivityTitle } from "./user-name";
 import { APP_VERSION } from "./version";
-
-function level(minutes: number) { return minutes === 0 ? 0 : minutes < 60 ? 1 : minutes < 120 ? 2 : minutes < 180 ? 3 : 4; }
 
 function durationParts(minutes: number) {
   const rounded = Math.round(minutes);
@@ -137,33 +132,10 @@ export default function ActivityDashboard({
     }
   };
 
-  const view = useMemo(() => {
-    const summary = summarizePracticePeriod(payload.data, { periodStart: payload.periodStart, today });
-    const period = new Map(summary.days.map(day => [day.date, day]));
-    const periodStart = calendarDate(summary.days[0].date);
-    const periodEnd = calendarDate(summary.days[summary.days.length - 1].date);
-    const start = new Date(periodStart);
-    start.setUTCDate(start.getUTCDate() - start.getUTCDay());
-    const cells: Array<{ date: string; minutes: number; items: string[]; inRange: boolean; elapsed: boolean }> = [];
-    for (let d = new Date(start); d <= periodEnd; d = new Date(d.getTime() + DAY)) {
-      const key = calendarDateKey(d); const day = period.get(key); cells.push({ date: key, minutes: day?.minutes ?? 0, items: day?.items ?? [], inRange: Boolean(day), elapsed: day?.elapsed ?? false });
-    }
-    while (cells.length % 7) { const d = new Date(calendarDate(cells[cells.length - 1].date).getTime() + DAY); cells.push({ date: calendarDateKey(d), minutes: 0, items: [], inRange: false, elapsed: false }); }
-    const weeks = cells.length / 7;
-    const months: Array<{ label: string; column: number }> = [];
-    const years: Array<{ label: string; column: number }> = [];
-    let previousMonth = "";
-    let previousYear = "";
-    cells.forEach((cell, index) => {
-      if (index % 7 !== 0) return;
-      const d = calendarDate(cell.date); const name = d.toLocaleString("en-US", { month: "short", timeZone: "UTC" });
-      const column = Math.floor(index / 7) + 1;
-      const year = String(d.getUTCFullYear());
-      if (name !== previousMonth) { months.push({ label: name, column }); previousMonth = name; }
-      if (year !== previousYear) { years.push({ label: year, column }); previousYear = year; }
-    });
-    return { cells, weeks, months, years, summary };
-  }, [payload.data, payload.periodStart, today]);
+  const view = useMemo(
+    () => buildActivityView(payload.data, payload.periodStart, today),
+    [payload.data, payload.periodStart, today],
+  );
   const selected = selectedDate
     ? view.summary.days.find(day => day.date === selectedDate) ?? null
     : null;
@@ -209,7 +181,7 @@ export default function ActivityDashboard({
                 const date = formatCalendarDate(cell.date, { weekday:"long", month:"long", day:"numeric", year:"numeric" });
                 const label = `${date}: ${state}${cell.items.length ? `. Practiced: ${cell.items.join(", ")}` : ""}`;
                 const showPopover = (target: HTMLButtonElement) => { const rect = target.getBoundingClientRect(); setPopover({ date, state, minutes: cell.inRange && cell.elapsed && cell.minutes ? cell.minutes : null, items: cell.items, x: rect.left + rect.width / 2, y: rect.top }); };
-                return <button key={cell.date} className={`cell level-${level(cell.minutes)} ${cell.inRange ? cell.elapsed ? "" : "future" : "outside"}`} aria-label={label} disabled={!cell.inRange} onMouseEnter={event => showPopover(event.currentTarget)} onMouseLeave={() => setPopover(null)} onFocus={event => showPopover(event.currentTarget)} onBlur={() => setPopover(null)} onClick={() => setSelectedDate(cell.date)} />;
+                return <button key={cell.date} className={`cell level-${practiceLevel(cell.minutes)} ${cell.inRange ? cell.elapsed ? "" : "future" : "outside"}`} aria-label={label} disabled={!cell.inRange} onMouseEnter={event => showPopover(event.currentTarget)} onMouseLeave={() => setPopover(null)} onFocus={event => showPopover(event.currentTarget)} onBlur={() => setPopover(null)} onClick={() => setSelectedDate(cell.date)} />;
               })}
             </div>
           </div>
