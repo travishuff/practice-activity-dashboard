@@ -4,9 +4,9 @@
 
 ## Download the installer
 
-[**Download Practice Activity v1.1.0 for macOS (.dmg) →**](https://github.com/travishuff/practice-activity-dashboard/releases/download/v1.1.0/Practice-Activity-v1.1.0-macOS-universal.dmg)
+[**Download Practice Activity v1.1.1 for macOS (.dmg) →**](https://github.com/travishuff/practice-activity-dashboard/releases/download/v1.1.1/Practice-Activity-v1.1.1-macOS-universal.dmg)
 
-[**Download Practice Activity v1.1.0 for Windows (.exe) →**](https://github.com/travishuff/practice-activity-dashboard/releases/download/v1.1.0/Practice-Activity-v1.1.0-Windows-x64-Setup.exe)
+[**Download Practice Activity v1.1.1 for Windows (.exe) →**](https://github.com/travishuff/practice-activity-dashboard/releases/download/v1.1.1/Practice-Activity-v1.1.1-Windows-x64-Setup.exe)
 
 The macOS installer works on both Apple Silicon and Intel Macs. The Windows
 installer works on 64-bit PCs. You can also
@@ -227,7 +227,7 @@ Squirrel writes the installer and its supporting package files under
 
 Every published version includes a macOS DMG and a 64-bit Windows Setup
 executable. Releases use [Semantic Versioning](https://semver.org/) from
-`package.json` and matching Git tags such as `v1.1.0`:
+`package.json` and matching Git tags such as `v1.1.1`:
 
 - patch (`0.1.1`) for fixes that do not change expected behavior
 - minor (`0.2.0`) for new backward-compatible features

@@ -103,7 +103,9 @@ module.exports = {
     // separate artifact and needs its own ticket, or a downloaded DMG can still
     // be challenged before the app inside is ever reached.
     postMake: async (_forgeConfig, makeResults) => {
-      if (signingIdentity && notarize) await notarizeDiskImages(makeResults, notarize);
+      if (signingIdentity && notarize) {
+        await notarizeDiskImages(makeResults, notarize, signingIdentity);
+      }
       return makeResults;
     },
   },
