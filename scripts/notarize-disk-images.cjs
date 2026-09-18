@@ -32,7 +32,7 @@ function run(command, args, description) {
   }
 }
 
-async function notarizeDiskImages(makeResults, notarize) {
+async function notarizeDiskImages(makeResults, notarize, signingIdentity) {
   const diskImages = makeResults
     .flatMap(result => result.artifacts)
     .filter(artifact => artifact.endsWith(".dmg"));
@@ -41,7 +41,17 @@ async function notarizeDiskImages(makeResults, notarize) {
 
   const credentials = credentialArguments(notarize);
   for (const diskImage of diskImages) {
-    console.log(`\nNotarizing ${diskImage}`);
+    console.log(`\nSigning ${diskImage}`);
+    // A stapled ticket alone leaves the container itself unsigned, which
+    // `spctl --assess` reports as "no usable signature". Sign it too so the
+    // disk image carries both a signature and a ticket.
+    run(
+      "codesign",
+      ["--force", "--sign", signingIdentity, "--timestamp", diskImage],
+      "codesign disk image",
+    );
+
+    console.log(`Notarizing ${diskImage}`);
     run(
       "xcrun",
       ["notarytool", "submit", diskImage, ...credentials, "--wait"],
@@ -50,6 +60,7 @@ async function notarizeDiskImages(makeResults, notarize) {
     run("xcrun", ["stapler", "staple", diskImage], "stapler staple");
     // Proves the ticket is actually attached rather than merely accepted.
     run("xcrun", ["stapler", "validate", diskImage], "stapler validate");
+    run("codesign", ["--verify", "--strict", diskImage], "codesign verify disk image");
   }
 }
 
