@@ -39,8 +39,73 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Import Developer ID certificate
+        if: matrix.label == 'macOS'
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          keychain_password="$(uuidgen)"
+          certificate="$RUNNER_TEMP/certificate.p12"
+
+          printf '%s' "$MACOS_CERTIFICATE_P12" | base64 --decode > "$certificate"
+          security create-keychain -p "$keychain_password" "$keychain"
+          # Without this the keychain relocks mid-build and codesign fails.
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$certificate" -k "$keychain" \
+            -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          # Lets codesign use the key without an interactive prompt.
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$keychain_password" "$keychain" > /dev/null
+          security list-keychain -d user -s "$keychain" login.keychain-db
+          rm -f "$certificate"
+
+          security find-identity -v -p codesigning "$keychain"
+
+      - name: Write App Store Connect API key
+        if: matrix.label == 'macOS'
+        env:
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$APPLE_API_KEY_P8" | base64 --decode > "$RUNNER_TEMP/api-key.p8"
+          chmod 600 "$RUNNER_TEMP/api-key.p8"
+
       - name: Build release artifacts
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ matrix.label == 'macOS' && secrets.APPLE_SIGNING_IDENTITY || '' }}
+          APPLE_API_KEY: ${{ matrix.label == 'macOS' && format('{0}/api-key.p8', runner.temp) || '' }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         run: ${{ matrix.command }}
+
+      - name: Verify the macOS build is signed, notarized and stapled
+        if: matrix.label == 'macOS'
+        run: |
+          set -euo pipefail
+          installer="$(find out/release -name '*-macOS-universal.dmg' -print -quit)"
+          [ -n "$installer" ] || { echo "no macOS installer found"; exit 1; }
+          # Fails unless a notarization ticket is attached to the disk image.
+          xcrun stapler validate "$installer"
+          # Mounts the image and asks Gatekeeper the same question a user's Mac
+          # will ask, so an unsigned or unnotarized app cannot ship silently.
+          mountpoint="$(mktemp -d)"
+          hdiutil attach "$installer" -nobrowse -readonly -mountpoint "$mountpoint"
+          trap 'hdiutil detach "$mountpoint" -quiet || true' EXIT
+          app="$mountpoint/Practice Activity.app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          codesign -dv --verbose=4 "$app" 2>&1 | grep -E 'Authority|TeamIdentifier|flags'
+          spctl --assess --type execute --verbose=4 "$app"
+          xcrun stapler validate "$app"
+
+      - name: Remove signing credentials
+        if: matrix.label == 'macOS' && always()
+        run: |
+          rm -f "$RUNNER_TEMP/api-key.p8"
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" || true
 
       - name: Test Windows installer end to end
         if: matrix.label == 'Windows'

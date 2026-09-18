@@ -39,7 +39,8 @@ export default defineConfig([
     },
   },
   {
-    files: ["forge.config.cjs"],
+    // CommonJS by definition; require() is the only way to import in them.
+    files: ["**/*.cjs"],
     rules: {
       "@typescript-eslint/no-require-imports": "off",
     },

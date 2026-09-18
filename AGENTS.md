@@ -136,6 +136,26 @@ which imports nothing from `electron` so it can be unit tested in plain Node.
 Keep it that way; the electron-facing wrapper is what holds the `isPackaged`
 gate and the filesystem reads.
 
+## Code signing
+
+`forge.config.cjs` picks its signing mode from the environment. With no
+`APPLE_SIGNING_IDENTITY` it ad-hoc signs, which is what keeps `pnpm make`
+working on a machine with no certificate. With one, it signs for real and
+**must** also find notarization credentials — the config throws otherwise,
+because a signed but un-notarized build still warns users and that failure is
+invisible until someone downloads it.
+
+Do not add `optionsForFile` to the real-signing branch. `@electron/osx-sign`
+defaults to hardened runtime, a secure timestamp, and the Electron entitlements
+its helpers need; notarization rejects builds missing any of them, and the
+ad-hoc branch deliberately disables the first two for local builds only.
+
+Forge notarizes and staples the `.app`. The disk image is built afterwards and
+needs its own ticket, which
+[`scripts/notarize-disk-images.cjs`](scripts/notarize-disk-images.cjs) attaches
+in a `postMake` hook. Both matter: the app ticket clears launch, the disk image
+ticket clears the download.
+
 ## Conventions
 
 - **The React rule sets are scoped to renderer files under `app/**`** in

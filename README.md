@@ -19,22 +19,13 @@ heatmap and summary that you refresh on demand.
 ## Install on macOS
 
 The release artifact is a universal `.dmg` that works on Apple Silicon and Intel
-Macs. This development build is unsigned, so macOS may ask you to approve it
-the first time it is opened.
+Macs. It is signed with a Developer ID certificate and notarized by Apple, so it
+opens without any security prompts or workarounds.
 
 1. Open `Practice Activity.dmg`.
 2. Drag **Practice Activity** into **Applications**.
 3. Open the app.
-4. If macOS says it cannot verify that **Practice Activity** is free of malware:
-
-   - Click **Done**.
-   - Open **System Settings** and choose **Privacy & Security**.
-   - Scroll to **Security** and click **Open Anyway**.
-   - Authenticate when prompted, then click **Open**.
-
-   The **Open Anyway** button is available for about an hour after the failed
-   launch attempt.
-5. Follow the first-run instructions to **share and connect the Practice Log**.
+4. Follow the first-run instructions to **share and connect the Practice Log**.
 
 The installed app includes its own runtime. End users do not need Node.js,
 pnpm, Terminal, or this source repository.
@@ -164,17 +155,56 @@ The first three run in CI on every push to `main` and every pull request,
 against Node 22 and Node 24. Installer packaging runs in the release workflow
 when a version tag is pushed.
 
+## Code signing
+
+macOS release builds are signed with a **Developer ID Application** certificate
+and notarized by Apple. The app is signed, notarized and stapled during
+packaging, and the disk image is notarized and stapled after it is built, so a
+downloaded installer clears Gatekeeper without contacting Apple.
+
+Signing is opt-in through the environment. When `APPLE_SIGNING_IDENTITY` is
+unset, builds are ad-hoc signed and run only on the machine that made them, so
+no certificate is needed for day-to-day development.
+
+| Variable | Purpose |
+| --- | --- |
+| `APPLE_SIGNING_IDENTITY` | Full certificate name, e.g. `Developer ID Application: Travis Huff (TEAMID1234)` |
+| `APPLE_API_KEY` | Path to the App Store Connect `.p8` key file |
+| `APPLE_API_KEY_ID` | Key ID for that key |
+| `APPLE_API_ISSUER` | Issuer ID for that key |
+
+An Apple ID may be used instead of an API key by setting `APPLE_ID`,
+`APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID`. The API key is preferred: it
+is scoped, revocable, and does not prompt for two-factor authentication.
+
+Setting `APPLE_SIGNING_IDENTITY` without notarization credentials fails the
+build rather than shipping a signed but un-notarized installer, which would
+still warn users.
+
+CI reads these from repository secrets: `MACOS_CERTIFICATE_P12` (base64 of the
+exported `.p12`), `MACOS_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`,
+`APPLE_API_KEY_P8` (base64 of the `.p8`), `APPLE_API_KEY_ID` and
+`APPLE_API_ISSUER`. The release workflow imports the certificate into a
+temporary keychain, verifies the finished installer with `stapler validate` and
+`spctl --assess`, and deletes the credentials afterwards.
+
+Windows installers are not yet signed; SmartScreen may still warn on first run.
+
 ## Build installers locally
 
 ### macOS
 
-Build a universal unsigned DMG and ZIP on a Mac:
+Build a universal DMG and ZIP on a Mac:
 
 ```bash
 pnpm make:mac
 ```
 
 Artifacts are written under `out/make/`. DMG generation must run on macOS.
+
+Without signing credentials in the environment this produces an ad-hoc-signed
+build, which runs locally but is not distributable. Release builds are signed
+and notarized in CI; see [Code signing](#code-signing).
 
 For a faster architecture-specific local build:
 
